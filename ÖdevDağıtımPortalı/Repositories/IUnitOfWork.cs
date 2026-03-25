@@ -1,4 +1,6 @@
-﻿namespace ÖdevDağıtım.API.Repositories
+﻿using ÖdevDağıtım.API.Models;
+
+namespace ÖdevDağıtım.API.Repositories
 {
     public interface IUnitOfWork : IDisposable
     {
@@ -7,5 +9,6 @@
         ISubmissionRepository Submissions { get; }
 
         Task<int> CompleteAsync();
+        IGenericRepository<Notification> Notifications { get; }
     }
 }

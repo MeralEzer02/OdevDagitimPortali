@@ -44,11 +44,14 @@ namespace ÖdevDağıtım.API.Services
 
             var token = await _jwtService.GenerateTokenAsync(user);
 
+            var roles = await _userManager.GetRolesAsync(user);
+
             return new AuthResponseDto
             {
                 Token = token,
                 Email = user.Email,
-                FullName = user.FullName
+                FullName = user.FullName,
+                Roles = roles
             };
         }
 
@@ -67,11 +70,14 @@ namespace ÖdevDağıtım.API.Services
 
             var token = await _jwtService.GenerateTokenAsync(user);
 
+            var roles = await _userManager.GetRolesAsync(user);
+
             return new AuthResponseDto
             {
                 Token = token,
                 Email = user.Email,
-                FullName = user.FullName
+                FullName = user.FullName,
+                Roles = roles
             };
         }
 

@@ -3,25 +3,39 @@ using Microsoft.EntityFrameworkCore;
 using ÖdevDağıtım.API.Models;
 using System.Reflection;
 
-namespace ÖdevDağıtım.API.Data  
+namespace ÖdevDağıtım.API.Data
 {
     public class AppDbContext : IdentityDbContext<AppUser, AppRole, string>
     {
         public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
         {
         }
+
         public DbSet<Course> Courses { get; set; }
         public DbSet<Assignment> Assignments { get; set; }
         public DbSet<Submission> Submissions { get; set; }
         public DbSet<Notification> Notifications { get; set; }
         public DbSet<FileMetadata> FileMetadatas { get; set; }
 
-protected override void OnModelCreating(ModelBuilder builder)
+        protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
             builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
 
-            // GLOBAL SOFT DELETE
+
+            builder.Entity<Course>()
+                .HasOne(c => c.Teacher)
+                .WithMany()
+                .HasForeignKey(c => c.TeacherId)
+                .OnDelete(DeleteBehavior.Restrict);
+
+            builder.Entity<Course>()
+                .HasMany(c => c.Students)
+                .WithMany(u => u.Courses)
+                .UsingEntity(j => j.ToTable("CourseStudents"));
+
+
+
             foreach (var entityType in builder.Model.GetEntityTypes())
             {
                 if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
@@ -40,7 +54,6 @@ protected override void OnModelCreating(ModelBuilder builder)
             builder.Entity<T>().HasQueryFilter(e => !e.IsDeleted);
         }
 
-        // AUDIT SİSTEMİ
         public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
             var entries = ChangeTracker.Entries<BaseEntity>();

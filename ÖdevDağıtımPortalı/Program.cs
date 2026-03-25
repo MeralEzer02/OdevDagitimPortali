@@ -37,6 +37,11 @@ builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
 
 builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+builder.Services.AddScoped<ÖdevDaðýtým.API.Services.ICourseService, ÖdevDaðýtým.API.Services.CourseService>();
+builder.Services.AddScoped<ÖdevDaðýtým.API.Services.IAssignmentService, ÖdevDaðýtým.API.Services.AssignmentService>();
+builder.Services.AddScoped<ÖdevDaðýtým.API.Services.ISubmissionService, ÖdevDaðýtým.API.Services.SubmissionService>();
+builder.Services.AddScoped<ÖdevDaðýtým.API.Services.INotificationService, ÖdevDaðýtým.API.Services.NotificationService>();
+
 // JWT Ayarlarýný Sýnýfa Baðlama (Options Pattern)
 builder.Services.Configure<ÖdevDaðýtým.API.Settings.JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 // JwtService'i Sisteme Kaydetme
@@ -121,7 +126,6 @@ app.UseAuthentication();
 // Yetki Kontrolü
 app.UseAuthorization();
 
-app.MapControllers();
 app.MapControllers();
 
 app.Run();

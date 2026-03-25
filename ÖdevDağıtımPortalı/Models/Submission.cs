@@ -10,5 +10,6 @@
         public AppUser Student { get; set; }
         public bool IsGraded { get; set; } = false;
         public double? Grade { get; set; }
+        public string? Feedback { get; set; }
     }
 }

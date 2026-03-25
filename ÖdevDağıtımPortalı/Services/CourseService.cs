@@ -1,4 +1,6 @@
 ﻿using AutoMapper;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using ÖdevDağıtım.API.DTOs;
 using ÖdevDağıtım.API.Models;
 using ÖdevDağıtım.API.Repositories;
@@ -10,69 +12,101 @@ namespace ÖdevDağıtım.API.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
+        private readonly UserManager<AppUser> _userManager;
+        private readonly INotificationService _notificationService;
 
-        public CourseService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService)
+        public CourseService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, UserManager<AppUser> userManager, INotificationService notificationService)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _currentUserService = currentUserService;
+            _userManager = userManager;
+            _notificationService = notificationService;
         }
 
         public async Task<CourseReadDto> CreateCourseAsync(CourseCreateDto dto)
         {
-            var currentUserId = _currentUserService.UserId;
-            if (string.IsNullOrEmpty(currentUserId))
-                throw new UnauthorizedAccessException("Giriş yapmalısınız.");
-
             var newCourse = _mapper.Map<Course>(dto);
-            // Öğretmen ID'sini doğrudan giriş yapan kişiden alıyoruz
-            newCourse.TeacherId = currentUserId;
+            newCourse.TeacherId = _currentUserService.UserId ?? throw new UnauthorizedAccessException();
 
-            // UnitOfWork üzerinden CourseRepo'ya erişim (Senin yapına uygun hali)
             await _unitOfWork.Courses.AddAsync(newCourse);
             await _unitOfWork.CompleteAsync();
 
             return _mapper.Map<CourseReadDto>(newCourse);
         }
 
-        public async Task DeleteCourseAsync(int courseId)
+        public async Task UpdateCourseAsync(int id, CourseUpdateDto dto)
         {
-            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            var course = await _unitOfWork.Courses.GetByIdAsync(id);
             if (course == null) throw new Exception("Ders bulunamadı.");
 
-            // SAHİPLİK KONTROLÜ
             if (course.TeacherId != _currentUserService.UserId)
-                throw new UnauthorizedAccessException("Sadece kendi açtığınız dersleri silebilirsiniz.");
+                throw new UnauthorizedAccessException("Sadece kendi açtığınız dersi güncelleyebilirsiniz.");
+
+            _mapper.Map(dto, course);
+            await _unitOfWork.CompleteAsync();
+        }
+
+        public async Task DeleteCourseAsync(int id)
+        {
+            var course = await _unitOfWork.Courses.GetByIdAsync(id);
+            if (course == null) throw new Exception("Ders bulunamadı.");
+
+            if (course.TeacherId != _currentUserService.UserId)
+                throw new UnauthorizedAccessException("Sadece kendi açtığınız dersi silebilirsiniz.");
 
             course.IsDeleted = true;
             await _unitOfWork.CompleteAsync();
         }
 
-        // --- INTERFACE'TEN GELEN EKSİK METOTLAR ---
-
-        public Task<IEnumerable<CourseReadDto>> GetAllCoursesAsync()
+        public async Task<PagedResult<CourseReadDto>> GetCoursesAsync(PaginationParams paginationParams)
         {
-            throw new NotImplementedException();
+            var query = _unitOfWork.Courses.GetAll();
+            var totalCount = await query.CountAsync();
+
+            var courses = await query
+                .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
+                .Take(paginationParams.PageSize)
+                .ToListAsync();
+
+            var dtoList = _mapper.Map<IEnumerable<CourseReadDto>>(courses);
+
+            return new PagedResult<CourseReadDto>(dtoList, totalCount, paginationParams.PageNumber, paginationParams.PageSize);
         }
 
-        public Task<CourseReadDto> GetCourseByIdAsync(int id)
+        public async Task<CourseReadDto> GetCourseDetailsAsync(int id)
         {
-            throw new NotImplementedException();
+            var course = await _unitOfWork.Courses.GetByIdAsync(id);
+            return _mapper.Map<CourseReadDto>(course);
         }
 
-        public Task UpdateCourseAsync(int id, CourseUpdateDto dto)
+        public async Task EnrollStudentAsync(int courseId, string studentId)
         {
-            throw new NotImplementedException();
+            var course = await _unitOfWork.Courses.Where(c => c.Id == courseId, c => c.Students).FirstOrDefaultAsync();
+            if (course == null) throw new Exception("Ders bulunamadı.");
+
+            var student = await _userManager.FindByIdAsync(studentId);
+            if (student == null) throw new Exception("Öğrenci bulunamadı.");
+
+            if (course.Students.Any(s => s.Id == studentId))
+                throw new Exception("Bu derse zaten kayıtlısınız.");
+
+            course.Students.Add(student);
+            await _unitOfWork.CompleteAsync();
+
+            await _notificationService.CreateNotificationAsync(
+                course.TeacherId,
+                $"{student.FirstName} {student.LastName} isimli öğrenci {course.Name} dersinize kayıt oldu."
+            );
         }
 
-        public Task AssignTeacherAsync(int courseId, string teacherId)
+        public async Task AssignTeacherAsync(int courseId, string teacherId)
         {
-            throw new NotImplementedException();
-        }
+            var course = await _unitOfWork.Courses.GetByIdAsync(courseId);
+            if (course == null) throw new Exception("Ders bulunamadı.");
 
-        public Task EnrollStudentAsync(int courseId, string studentId)
-        {
-            throw new NotImplementedException();
+            course.TeacherId = teacherId;
+            await _unitOfWork.CompleteAsync();
         }
     }
 }

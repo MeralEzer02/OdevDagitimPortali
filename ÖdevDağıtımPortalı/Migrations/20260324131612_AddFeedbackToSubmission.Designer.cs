@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using ÖdevDağıtım.API.Data;
 
@@ -11,9 +12,11 @@ using ÖdevDağıtım.API.Data;
 namespace ÖdevDağıtım.API.Migrations
 {
     [DbContext(typeof(AppDbContext))]
-    partial class AppDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260324131612_AddFeedbackToSubmission")]
+    partial class AddFeedbackToSubmission
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -21,21 +24,6 @@ namespace ÖdevDağıtım.API.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 128);
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
-
-            modelBuilder.Entity("AppUserCourse", b =>
-                {
-                    b.Property<int>("CoursesId")
-                        .HasColumnType("int");
-
-                    b.Property<string>("StudentsId")
-                        .HasColumnType("nvarchar(450)");
-
-                    b.HasKey("CoursesId", "StudentsId");
-
-                    b.HasIndex("StudentsId");
-
-                    b.ToTable("CourseStudents", (string)null);
-                });
 
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
@@ -480,21 +468,6 @@ namespace ÖdevDağıtım.API.Migrations
                     b.ToTable("Submissions");
                 });
 
-            modelBuilder.Entity("AppUserCourse", b =>
-                {
-                    b.HasOne("ÖdevDağıtım.API.Models.Course", null)
-                        .WithMany()
-                        .HasForeignKey("CoursesId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.HasOne("ÖdevDağıtım.API.Models.AppUser", null)
-                        .WithMany()
-                        .HasForeignKey("StudentsId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRoleClaim<string>", b =>
                 {
                     b.HasOne("ÖdevDağıtım.API.Models.AppRole", null)
@@ -560,9 +533,9 @@ namespace ÖdevDağıtım.API.Migrations
             modelBuilder.Entity("ÖdevDağıtım.API.Models.Course", b =>
                 {
                     b.HasOne("ÖdevDağıtım.API.Models.AppUser", "Teacher")
-                        .WithMany()
+                        .WithMany("Courses")
                         .HasForeignKey("TeacherId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Teacher");
@@ -600,6 +573,8 @@ namespace ÖdevDağıtım.API.Migrations
 
             modelBuilder.Entity("ÖdevDağıtım.API.Models.AppUser", b =>
                 {
+                    b.Navigation("Courses");
+
                     b.Navigation("Notifications");
 
                     b.Navigation("Submissions");

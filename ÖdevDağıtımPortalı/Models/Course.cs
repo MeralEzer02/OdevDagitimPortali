@@ -9,5 +9,6 @@ namespace ÖdevDağıtım.API.Models
         public string TeacherId { get; set; }
         public AppUser Teacher { get; set; }
         public ICollection<Assignment> Assignments { get; set; }
+        public ICollection<AppUser> Students { get; set; } = new List<AppUser>();
     }
 }
