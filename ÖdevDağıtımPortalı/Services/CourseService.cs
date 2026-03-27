@@ -92,12 +92,19 @@ namespace ÖdevDağıtım.API.Services
                 throw new Exception("Bu derse zaten kayıtlısınız.");
 
             course.Students.Add(student);
+
             await _unitOfWork.CompleteAsync();
 
-            await _notificationService.CreateNotificationAsync(
-                course.TeacherId,
-                $"{student.FirstName} {student.LastName} isimli öğrenci {course.Name} dersinize kayıt oldu."
-            );
+            try
+            {
+                await _notificationService.CreateNotificationAsync(
+                    course.TeacherId,
+                    $"{student.FirstName} {student.LastName} isimli öğrenci {course.Name} dersinize kayıt oldu."
+                );
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public async Task AssignTeacherAsync(int courseId, string teacherId)

@@ -34,6 +34,7 @@ namespace ÖdevDağıtım.API.Services
 
             var assignment = _mapper.Map<Assignment>(dto);
             await _unitOfWork.Assignments.AddAsync(assignment);
+
             await _unitOfWork.CompleteAsync();
 
             var courseWithStudents = await _unitOfWork.Courses
@@ -42,12 +43,18 @@ namespace ÖdevDağıtım.API.Services
 
             if (courseWithStudents != null && courseWithStudents.Students.Any())
             {
-                foreach (var student in courseWithStudents.Students)
+                try
                 {
-                    await _notificationService.CreateNotificationAsync(
-                        student.Id,
-                        $"{courseWithStudents.Name} dersine yeni bir ödev eklendi: {assignment.Title}. Son Teslim: {assignment.DueDate.ToShortDateString()}"
-                    );
+                    foreach (var student in courseWithStudents.Students)
+                    {
+                        await _notificationService.CreateNotificationAsync(
+                            student.Id,
+                            $"{courseWithStudents.Name} dersine yeni bir ödev eklendi: {assignment.Title}. Son Teslim: {assignment.DueDate.ToShortDateString()}"
+                        );
+                    }
+                }
+                catch (Exception)
+                {
                 }
             }
 

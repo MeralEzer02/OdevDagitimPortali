@@ -25,21 +25,13 @@ namespace ÖdevDağıtım.API.Services
         {
             var studentId = _currentUserService.UserId ?? throw new UnauthorizedAccessException();
 
-            // 🕵️‍♂️ DEDEKTİF KODU 1: Gelen ID'yi kontrol edelim
             if (dto.AssignmentId <= 0)
-                throw new Exception($"DEDEKTİF BİLDİRİYOR: JSON'dan gelen AssignmentId değeri sıfır ({dto.AssignmentId}). JSON verisi DTO'ya eşleşemedi! SubmissionCreateDto içindeki yazımı kontrol et.");
+                throw new Exception($"Geçersiz Ödev ID'si ({dto.AssignmentId}).");
 
-            // 🕵️‍♂️ DEDEKTİF KODU 2: Veritabanında bu ID'ye sahip ödev var mı?
-            var checkAssignment = await _unitOfWork.Assignments.GetByIdAsync(dto.AssignmentId);
-            if (checkAssignment == null)
-                throw new Exception($"DEDEKTİF BİLDİRİYOR: Veritabanında Id'si {dto.AssignmentId} olan bir ödev GERÇEKTEN YOK! (Silinmiş veya kaydedilmemiş olabilir).");
-
-            // 🕵️‍♂️ DEDEKTİF KODU 3: İlişkilerle (Course) birlikte çekebiliyor muyuz?
             var assignment = await _unitOfWork.Assignments.Where(a => a.Id == dto.AssignmentId, a => a.Course).FirstOrDefaultAsync();
             if (assignment == null)
-                throw new Exception($"DEDEKTİF BİLDİRİYOR: Ödev ({dto.AssignmentId}) bulundu AMA bağlı olduğu Course (Ders) bulunamadı! Veritabanı ilişkisi kopuk.");
+                throw new Exception("Ödev bulunamadı.");
 
-            // --- ORİJİNAL KONTROLLER ---
             if (assignment.DueDate < DateTime.UtcNow)
                 throw new Exception("Bu ödevin teslim süresi dolmuştur.");
 
@@ -47,16 +39,19 @@ namespace ÖdevDağıtım.API.Services
             if (courseWithStudents == null || !courseWithStudents.Students.Any(s => s.Id == studentId))
                 throw new Exception("Sadece kayıtlı olduğunuz derslere ödev teslim edebilirsiniz.");
 
-            bool alreadySubmitted = await _unitOfWork.Submissions.Where(s => s.AssignmentId == dto.AssignmentId && s.StudentId == studentId).AnyAsync();
-            if (alreadySubmitted)
-                throw new Exception("Bu ödev için zaten bir teslimat yaptınız.");
-
             var submission = _mapper.Map<Submission>(dto);
             submission.StudentId = studentId;
             submission.SubmissionDate = DateTime.UtcNow;
 
-            await _unitOfWork.Submissions.AddAsync(submission);
-            await _unitOfWork.CompleteAsync();
+            try
+            {
+                await _unitOfWork.Submissions.AddAsync(submission);
+                await _unitOfWork.CompleteAsync();
+            }
+            catch (DbUpdateException ex)
+            {
+                throw new Exception("Bu ödev için zaten bir teslimat yaptınız. (Çoklu gönderim engellendi.)", ex);
+            }
 
             return _mapper.Map<SubmissionReadDto>(submission);
         }
@@ -70,16 +65,37 @@ namespace ÖdevDağıtım.API.Services
             if (submission.Assignment.Course.TeacherId != _currentUserService.UserId)
                 throw new UnauthorizedAccessException("Sadece kendi dersinize ait ödevleri notlandırabilirsiniz.");
 
+            if (dto.RowVersion != null && dto.RowVersion.Length > 0)
+            {
+                if (submission.RowVersion == null || !submission.RowVersion.SequenceEqual(dto.RowVersion))
+                {
+                    throw new Exception("Bu ödev notu siz işlem yaparken başka bir öğretmen/sekme tarafından güncellenmiş. Lütfen sayfayı yenileyip tekrar deneyin.");
+                }
+            }
+
             submission.Grade = dto.Grade;
             submission.Feedback = dto.Feedback;
             submission.IsGraded = true;
 
-            await _unitOfWork.CompleteAsync();
+            try
+            {
+                await _unitOfWork.CompleteAsync();
+            }
+            catch (DbUpdateConcurrencyException ex)
+            {
+                throw new Exception("Bu ödev notu siz işlem yaparken başka bir öğretmen/sekme tarafından güncellenmiş. Lütfen sayfayı yenileyip tekrar deneyin.", ex);
+            }
 
-            await _notificationService.CreateNotificationAsync(
-                submission.StudentId,
-                $"{submission.Assignment.Course.Name} dersindeki '{submission.Assignment.Title}' ödeviniz notlandırıldı. Notunuz: {dto.Grade}"
-            );
+            try
+            {
+                await _notificationService.CreateNotificationAsync(
+                    submission.StudentId,
+                    $"{submission.Assignment.Course.Name} dersindeki '{submission.Assignment.Title}' ödeviniz notlandırıldı. Notunuz: {dto.Grade}"
+                );
+            }
+            catch (Exception)
+            {
+            }
         }
 
         public async Task<PagedResult<SubmissionReadDto>> GetSubmissionsByAssignmentAsync(int assignmentId, PaginationParams paginationParams)

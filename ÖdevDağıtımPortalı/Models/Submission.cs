@@ -1,5 +1,8 @@
-﻿namespace ÖdevDağıtım.API.Models
+﻿using Microsoft.EntityFrameworkCore;
+
+namespace ÖdevDağıtım.API.Models
 {
+    [Index(nameof(AssignmentId), nameof(StudentId), IsUnique = true)]
     public class Submission : BaseEntity
     {
         public DateTime SubmissionDate { get; set; }
