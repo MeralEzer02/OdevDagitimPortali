@@ -7,7 +7,7 @@ namespace ÖdevDağıtım.API.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
-    [Authorize] 
+    [Authorize]
     public class CoursesController : ControllerBase
     {
         private readonly ICourseService _courseService;
@@ -53,7 +53,7 @@ namespace ÖdevDağıtım.API.Controllers
         }
 
         [HttpPost("{id}/assign-teacher")]
-        [Authorize(Roles = "Admin")] 
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> AssignTeacher(int id, [FromBody] string teacherId)
         {
             await _courseService.AssignTeacherAsync(id, teacherId);

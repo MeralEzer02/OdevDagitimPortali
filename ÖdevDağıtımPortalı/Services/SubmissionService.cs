@@ -4,24 +4,27 @@ using ÖdevDağıtım.API.DTOs;
 using ÖdevDağıtım.API.Models;
 using ÖdevDağıtım.API.Repositories;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Logging;
 
 namespace ÖdevDağıtım.API.Services
 {
     public class SubmissionService : ISubmissionService
-    {      
+    {
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
         private readonly INotificationService _notificationService;
         private readonly IFileService _fileService;
+        private readonly ILogger<SubmissionService> _logger;
 
-        public SubmissionService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, INotificationService notificationService, IFileService fileService)
+        public SubmissionService(IUnitOfWork unitOfWork, IMapper mapper, ICurrentUserService currentUserService, INotificationService notificationService, IFileService fileService, ILogger<SubmissionService> logger)
         {
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _currentUserService = currentUserService;
             _notificationService = notificationService;
             _fileService = fileService;
+            _logger = logger;
         }
 
         public async Task<SubmissionReadDto> SubmitAssignmentAsync(SubmissionCreateDto dto)
@@ -63,8 +66,12 @@ namespace ÖdevDağıtım.API.Services
                     _fileService.DeleteFile(submission.FilePath);
                 }
 
+                _logger.LogWarning("⚠️ DİKKAT: Öğrenci {StudentId}, Ödev {AssignmentId} için mükerrer gönderim yapmaya çalıştı!", studentId, dto.AssignmentId);
+
                 throw new Exception("Bu ödev için zaten bir teslimat yaptınız. (Çoklu gönderim engellendi.)", ex);
             }
+
+            _logger.LogInformation("✅ BAŞARILI: Öğrenci {StudentId}, Ödev {AssignmentId} için dosya yükledi.", studentId, dto.AssignmentId);
 
             return _mapper.Map<SubmissionReadDto>(submission);
         }
@@ -96,6 +103,7 @@ namespace ÖdevDağıtım.API.Services
             }
             catch (DbUpdateConcurrencyException ex)
             {
+                _logger.LogWarning("⚠️ DİKKAT: Ödev notlandırma sırasında Concurrency Çatışması yaşandı! Submission ID: {SubmissionId}", id);
                 throw new Exception("Bu ödev notu siz işlem yaparken başka bir öğretmen/sekme tarafından güncellenmiş. Lütfen sayfayı yenileyip tekrar deneyin.", ex);
             }
 
@@ -106,8 +114,9 @@ namespace ÖdevDağıtım.API.Services
                     $"{submission.Assignment.Course.Name} dersindeki '{submission.Assignment.Title}' ödeviniz notlandırıldı. Notunuz: {dto.Grade}"
                 );
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                _logger.LogError(ex, "❌ HATA YUTULDU: Not verildi ama {StudentId} ID'li öğrenciye bildirim atılamadı!", submission.StudentId);
             }
         }
 

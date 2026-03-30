@@ -21,7 +21,7 @@ namespace ÖdevDağıtım.API.Controllers
 
         [HttpPost]
         [Authorize(Roles = "Student")]
-        public async Task<IActionResult> SubmitAssignment([FromBody] SubmissionCreateDto dto)
+        public async Task<IActionResult> SubmitAssignment([FromForm] SubmissionCreateDto dto)
         {
             var result = await _submissionService.SubmitAssignmentAsync(dto);
             return Ok(result);

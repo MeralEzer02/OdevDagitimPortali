@@ -91,12 +91,20 @@ namespace ÖdevDağıtım.API.Services
             var query = _unitOfWork.Assignments.Where(a => a.CourseId == courseId && !a.IsDeleted);
             var totalCount = await query.CountAsync();
 
-            var assignments = await query
+            // 🚀 SENIOR DOKUNUŞU (9.1 & 9.2): DB Projection - Sadece DTO'nun ihtiyaç duyduğu alanları SELECT ediyoruz.
+            var dtoList = await query
                 .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
                 .Take(paginationParams.PageSize)
+                .Select(a => new AssignmentReadDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Description = a.Description,
+                    DueDate = a.DueDate,
+                    CourseId = a.CourseId
+                })
                 .ToListAsync();
 
-            var dtoList = _mapper.Map<IEnumerable<AssignmentReadDto>>(assignments);
             return new PagedResult<AssignmentReadDto>(dtoList, totalCount, paginationParams.PageNumber, paginationParams.PageSize);
         }
 
@@ -107,12 +115,20 @@ namespace ÖdevDağıtım.API.Services
             var query = _unitOfWork.Assignments.Where(a => courses.Contains(a.CourseId) && !a.IsDeleted);
             var totalCount = await query.CountAsync();
 
-            var assignments = await query
+            // 🚀 SENIOR DOKUNUŞU (9.1 & 9.2): DB Projection - AutoMapper'ın RAM'i şişirmesini engelledik.
+            var dtoList = await query
                 .Skip((paginationParams.PageNumber - 1) * paginationParams.PageSize)
                 .Take(paginationParams.PageSize)
+                .Select(a => new AssignmentReadDto
+                {
+                    Id = a.Id,
+                    Title = a.Title,
+                    Description = a.Description,
+                    DueDate = a.DueDate,
+                    CourseId = a.CourseId
+                })
                 .ToListAsync();
 
-            var dtoList = _mapper.Map<IEnumerable<AssignmentReadDto>>(assignments);
             return new PagedResult<AssignmentReadDto>(dtoList, totalCount, paginationParams.PageNumber, paginationParams.PageSize);
         }
 
