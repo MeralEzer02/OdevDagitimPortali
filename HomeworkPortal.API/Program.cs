@@ -87,6 +87,7 @@ builder.Services.AddAutoMapper(cfg =>
 builder.Services.AddScoped<HomeworkPortal.API.Services.IAuthService, HomeworkPortal.API.Services.AuthService>();
 
 builder.Services.AddHttpContextAccessor();
+
 // CurrentUserService Kaydý
 builder.Services.AddScoped<HomeworkPortal.API.Services.ICurrentUserService, HomeworkPortal.API.Services.CurrentUserService>();
 
