@@ -5,7 +5,7 @@ VisualStudioVersion = 17.14.36705.20
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeworkPortal.API", "HomeworkPortal.API\HomeworkPortal.API.csproj", "{5AE56932-99DF-AB19-39E5-C26027A5BC4F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeworkPortal.UI", "HomeworkPortal.UI\HomeworkPortal.UI.csproj", "{3DD277D0-60F3-75A2-2B42-EAB42D55E097}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeworkPortal.UI", "HomeworkPortal.UI\HomeworkPortal.UI.csproj", "{9F09357C-81A9-4748-A850-79F278311E25}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{5AE56932-99DF-AB19-39E5-C26027A5BC4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5AE56932-99DF-AB19-39E5-C26027A5BC4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5AE56932-99DF-AB19-39E5-C26027A5BC4F}.Release|Any CPU.Build.0 = Release|Any CPU
-		{3DD277D0-60F3-75A2-2B42-EAB42D55E097}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{3DD277D0-60F3-75A2-2B42-EAB42D55E097}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{3DD277D0-60F3-75A2-2B42-EAB42D55E097}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{3DD277D0-60F3-75A2-2B42-EAB42D55E097}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9F09357C-81A9-4748-A850-79F278311E25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9F09357C-81A9-4748-A850-79F278311E25}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9F09357C-81A9-4748-A850-79F278311E25}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9F09357C-81A9-4748-A850-79F278311E25}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

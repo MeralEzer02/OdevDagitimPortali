@@ -1,8 +1,8 @@
+using HomeworkPortal.UI.Models;
 using Microsoft.AspNetCore.Mvc;
-using HomeworkPortal.Models;
 using System.Diagnostics;
 
-namespace HomeworkPortal.Controllers
+namespace HomeworkPortal.UI.Controllers
 {
     public class HomeController : Controller
     {

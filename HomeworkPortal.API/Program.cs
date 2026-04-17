@@ -1,4 +1,4 @@
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+ï»¿using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -24,11 +24,11 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 
 builder.Services.AddControllers();
 
-// SQL Server ve DbContext Ayarý
+// SQL Server ve DbContext AyarÄ±
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Identity Ayarý
+// Identity AyarÄ±
 builder.Services.AddIdentity<AppUser, AppRole>(options =>
 {
     options.Password.RequireDigit = false;
@@ -38,10 +38,10 @@ builder.Services.AddIdentity<AppUser, AppRole>(options =>
 })
 .AddEntityFrameworkStores<AppDbContext>();
 
-// Generic Repository Kaydý
+// Generic Repository KaydÄ±
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 
-// Özel Repository Kayýtlarý
+// Ã–zel Repository KayÄ±tlarÄ±
 builder.Services.AddScoped<ICourseRepository, CourseRepository>();
 builder.Services.AddScoped<IAssignmentRepository, AssignmentRepository>();
 builder.Services.AddScoped<ISubmissionRepository, SubmissionRepository>();
@@ -53,11 +53,11 @@ builder.Services.AddScoped<HomeworkPortal.API.Services.IAssignmentService, Homew
 builder.Services.AddScoped<HomeworkPortal.API.Services.ISubmissionService, HomeworkPortal.API.Services.SubmissionService>();
 builder.Services.AddScoped<HomeworkPortal.API.Services.INotificationService, HomeworkPortal.API.Services.NotificationService>();
 
-// JWT Ayarlarýný Sýnýfa Baðlama (Options Pattern)
+// JWT AyarlarÄ±nÄ± SÄ±nÄ±fa BaÄŸlama (Options Pattern)
 builder.Services.Configure<HomeworkPortal.API.Settings.JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
 // JwtService'i Sisteme Kaydetme
 builder.Services.AddScoped<HomeworkPortal.API.Services.IJwtService, HomeworkPortal.API.Services.JwtService>();
-// JWT Middleware (Güvenlik Görevlisi) Ayarý
+// JWT Middleware (GÃ¼venlik GÃ¶revlisi) AyarÄ±
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -78,7 +78,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// AutoMapper Kaydý
+// AutoMapper KaydÄ±
 builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<HomeworkPortal.API.Helpers.MappingProfile>();
@@ -88,7 +88,7 @@ builder.Services.AddScoped<HomeworkPortal.API.Services.IAuthService, HomeworkPor
 
 builder.Services.AddHttpContextAccessor();
 
-// CurrentUserService Kaydý
+// CurrentUserService KaydÄ±
 builder.Services.AddScoped<HomeworkPortal.API.Services.ICurrentUserService, HomeworkPortal.API.Services.CurrentUserService>();
 
 builder.Services.AddScoped<IFileService, FileService>();
@@ -98,7 +98,7 @@ builder.Services.AddEndpointsApiExplorer();
 // Health Check Servisleri
 builder.Services.AddHealthChecks()
     .AddSqlServer(
-        connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DB Connection string bulunamadý."),
+        connectionString: builder.Configuration.GetConnectionString("DefaultConnection") ?? throw new InvalidOperationException("DB Connection string bulunamadÄ±."),
         name: "SQL Server DB Check",
         tags: new[] { "ready" }
     );
@@ -126,7 +126,7 @@ builder.Services.AddSwaggerGen(c =>
         Scheme = "Bearer",
         BearerFormat = "JWT",
         In = Microsoft.OpenApi.Models.ParameterLocation.Header,
-        Description = "JWT Token'ýnýzý buraya girin. Örnek: 'Bearer {token}'"
+        Description = "JWT Token'Ä±nÄ±zÄ± buraya girin. Ã–rnek: 'Bearer {token}'"
     });
 
     c.AddSecurityRequirement(new Microsoft.OpenApi.Models.OpenApiSecurityRequirement
@@ -145,6 +145,17 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowMyUI", policy =>
+    {
+        // UI Projemizin portuna izin veriyoruz
+        policy.WithOrigins("https://localhost:7141")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -153,14 +164,13 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
-//Correlation ID Bekçisi
+//Correlation ID BekÃ§isi
 app.UseMiddleware<HomeworkPortal.API.Middlewares.CorrelationIdMiddleware>();
 
-// Hata Yakalayýcý Middleware
+// Hata YakalayÄ±cÄ± Middleware
 app.UseMiddleware<HomeworkPortal.API.Middlewares.GlobalExceptionMiddleware>();
 
 // Health Check Endpoint'leri
-
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions
 {
     Predicate = _ => false
@@ -175,13 +185,15 @@ app.UseHttpsRedirection();
 
 app.UseStaticFiles();
 
-// Güvenlik Baþlýklarý
+// GÃ¼venlik BaÅŸlÄ±klarÄ±
 app.UseMiddleware<HomeworkPortal.API.Middlewares.SecurityHeadersMiddleware>();
 
-// Kimlik Doðrulama
-app.UseAuthentication();
+//  CORS MÄ°DDLEWARE
+app.UseRouting();
 
-// Yetki Kontrolü
+app.UseCors("AllowMyUI");
+
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.UseRateLimiter();

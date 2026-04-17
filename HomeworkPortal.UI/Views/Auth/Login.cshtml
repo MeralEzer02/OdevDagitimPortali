@@ -1,0 +1,92 @@
+﻿@{
+    Layout = "~/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="col-12 col-sm-8 col-md-6 col-lg-5 col-xl-4">
+    <div class="bg-light rounded p-4 p-sm-5 my-4 mx-3 shadow-sm border">
+
+        <div class="text-center mb-4">
+            <h3 class="text-primary"><i class="fa fa-graduation-cap me-2"></i>HomeworkPortal</h3>
+            <p class="text-muted mt-2">Lütfen bilgilerinizi giriniz</p>
+        </div>
+
+        <form id="loginForm" onsubmit="return false;">
+            <div class="form-floating mb-3">
+                <input type="email" class="form-control" id="email" placeholder="name@example.com" required>
+                <label for="email">E-Posta Adresi</label>
+            </div>
+
+            <div class="form-floating mb-4">
+                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                <label for="password">Şifre</label>
+            </div>
+
+            <div class="alert alert-danger py-2" id="errorMessage" style="display:none; font-size:14px;">
+                Hatalı e-posta veya şifre!
+            </div>
+
+            <button type="button" id="btnSubmit" class="btn btn-primary py-3 w-100 mb-4">GİRİŞ YAP</button>
+        </form>
+
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+
+            $('#password').keypress(function (e) {
+                if (e.which == 13) {
+                    $('#btnSubmit').click();
+                    return false;
+                }
+            });
+
+            $("#btnSubmit").click(function (e) {
+                e.preventDefault();
+
+                var email = $("#email").val();
+                var password = $("#password").val();
+
+                if (!email || !password) {
+                    $("#errorMessage").text("Lütfen e-posta ve şifre giriniz.").show();
+                    return;
+                }
+
+                var model = {
+                    email: email,
+                    password: password
+                };
+
+                $("#btnSubmit").prop("disabled", true).text("Giriş Yapılıyor...");
+
+                $.ajax({
+                    url: "https://localhost:7113/api/Auth/login",
+                    type: "POST",
+                    data: JSON.stringify(model),
+                    contentType: "application/json",
+                    success: function (res) {
+                        $.ajax({
+                            url: "/Auth/SetSessionToken",
+                            type: "POST",
+                            data: JSON.stringify(res.token),
+                            contentType: "application/json",
+                            success: function() {
+                                window.location = "/Home/Index";
+                            }
+                        });
+                    },
+                    error: function (xhr) {
+                        if(xhr.status === 429){
+                            $("#errorMessage").text("Çok fazla deneme yaptınız. Lütfen bekleyin.");
+                        } else {
+                            $("#errorMessage").text("Hatalı e-posta veya şifre!");
+                        }
+                        $("#errorMessage").show();
+                        $("#btnSubmit").prop("disabled", false).text("GİRİŞ YAP");
+                    }
+                });
+            });
+        });
+    </script>
+}

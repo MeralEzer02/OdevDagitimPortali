@@ -1,4 +1,4 @@
-namespace HomeworkPortal.Models
+namespace HomeworkPortal.UI.Models
 {
     public class ErrorViewModel
     {
