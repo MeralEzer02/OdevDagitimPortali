@@ -54,8 +54,9 @@ else
 }
 
 @section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        const API_USERS = "https://localhost:7113/api/Auth/users";
+        const API_USERS = "https://localhost:7113/api/Users";
         const API_COURSES = "https://localhost:7113/api/Courses";
 
         let CURRENT_TAB = "STUDENTS";
@@ -85,9 +86,11 @@ else
             try {
                 $("#userTableBody").html('<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler Çekiliyor...</td></tr>');
 
-                // Kullanıcıları ve Kursları aynı anda çekiyoruz
                 const [userRes, courseRes] = await Promise.all([
-                    $.ajax({ url: API_USERS, method: "GET" }).catch(()=>({data:[]})),
+                    $.ajax({ url: API_USERS, method: "GET" }).catch(err => {
+                        showToast("API Hatası", "/api/Users ucu bulunamadı! C# kodunuzu kontrol edin.", "danger");
+                        return { data: [] };
+                    }),
                     $.ajax({ url: API_COURSES, method: "GET" }).catch(()=>({data:[]}))
                 ]);
 
@@ -109,7 +112,6 @@ else
                 filtered = filtered.filter(u => (u.fullName && u.fullName.toLowerCase().includes(searchText)) || (u.email && u.email.toLowerCase().includes(searchText)));
             }
 
-            // Tablo Başlıklarını Tab'a Göre Değiştir
             if (CURRENT_TAB === "STUDENTS") {
                 $("#userTableHeader").html('<tr><th>Öğrenci Adı</th><th>E-Posta Adresi</th><th>Kayıtlı Olduğu Kurslar</th><th>Sistem İşlemi</th></tr>');
             } else {
@@ -118,12 +120,10 @@ else
 
             let html = "";
             if (filtered.length === 0) {
-                html = `<tr><td colspan="4" class="text-center text-muted py-4">Bu rolde kullanıcı bulunamadı.</td></tr>`;
+                html = `<tr><td colspan="4" class="text-center text-muted py-4">Sistemde bu rolde kullanıcı bulunamadı veya API veriyi getirmedi.</td></tr>`;
             } else {
                 filtered.forEach(u => {
                     let extraColumn = "";
-
-                    // ÖĞRETMENSE: Açtığı Kursları Bul
                     if (CURRENT_TAB === "TEACHERS") {
                         let teacherCourses = globalCourses.filter(c => c.teacherId === u.id);
                         if (teacherCourses.length > 0) {
@@ -132,10 +132,7 @@ else
                         } else {
                             extraColumn = `<td><span class="badge badge-secondary p-2">Henüz kurs açmamış</span></td>`;
                         }
-                    }
-                    // ÖĞRENCİYSE: Kayıtlı Olduğu Kursları Bul
-                    else if (CURRENT_TAB === "STUDENTS") {
-                        // API'den "u.courses" veya benzeri bir liste dönüyorsa onu kullanırız, dönmüyorsa globalCourses içindeki öğrenci listesinden bakarız.
+                    } else if (CURRENT_TAB === "STUDENTS") {
                         if (u.courses && u.courses.length > 0) {
                             let badges = u.courses.map(c => `<span class="badge badge-primary mr-1 mb-1 p-2">${c.name || c}</span>`).join('');
                             extraColumn = `<td>${badges}</td>`;
@@ -160,6 +157,13 @@ else
                 });
             }
             $("#userTableBody").html(html);
+        }
+
+        function showToast(title, message, type) {
+            let swalIcon = type === 'danger' ? 'error' : type;
+            let bgColor = type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : '#f6c23e');
+            let txtColor = type === 'warning' ? '#3a3b45' : '#ffffff';
+            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 6000, timerProgressBar: true, background: bgColor, color: txtColor, iconColor: txtColor }).fire({ icon: swalIcon, title: title, text: message });
         }
     </script>
 }

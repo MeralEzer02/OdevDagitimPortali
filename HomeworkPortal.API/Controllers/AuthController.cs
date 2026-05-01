@@ -1,6 +1,8 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using HomeworkPortal.API.DTOs;
 using HomeworkPortal.API.Services;
+using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace HomeworkPortal.API.Controllers
 {
@@ -35,6 +37,27 @@ namespace HomeworkPortal.API.Controllers
             try
             {
                 var result = await _authService.LoginAsync(dto);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPut("update-profile")]
+        [Authorize]
+        public async Task<IActionResult> UpdateProfile([FromBody] UpdateProfileDto dto)
+        {
+            try
+            {
+                var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+
+                if (userId == null)
+                    return Unauthorized(new { message = "Kullanıcı kimliği doğrulanamadı." });
+
+                var result = await _authService.UpdateProfileAsync(userId, dto);
+
                 return Ok(result);
             }
             catch (Exception ex)

@@ -1,12 +1,13 @@
-﻿using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.IdentityModel.Tokens;
-using HomeworkPortal.API.Data;
+﻿using HomeworkPortal.API.Data;
 using HomeworkPortal.API.Models;
 using HomeworkPortal.API.Repositories;
 using HomeworkPortal.API.Services;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.IdentityModel.Tokens;
 using Prometheus;
 using Serilog;
 using System.Text;
@@ -21,16 +22,18 @@ builder.Host.UseSerilog((context, loggerConfig) =>
 });
 
 // Add services to the container.
-
 builder.Services.AddControllers();
 
+// CORS AYARI
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowUI", builder =>
-        builder.WithOrigins("https://localhost:7205")
-               .AllowAnyMethod()
-               .AllowAnyHeader()
-               .AllowCredentials());
+    options.AddPolicy("AllowMyUI", policy =>
+    {
+        policy.WithOrigins("https://localhost:7205", "https://localhost:7141")
+              .AllowAnyMethod()
+              .AllowAnyHeader()
+              .AllowCredentials();
+    });
 });
 
 // SQL Server ve DbContext Ayarı
@@ -45,7 +48,8 @@ builder.Services.AddIdentity<AppUser, AppRole>(options =>
     options.Password.RequireNonAlphanumeric = false;
     options.Password.RequireUppercase = false;
 })
-.AddEntityFrameworkStores<AppDbContext>();
+.AddEntityFrameworkStores<AppDbContext>()
+.AddDefaultTokenProviders();
 
 // Generic Repository Kaydı
 builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
@@ -64,8 +68,10 @@ builder.Services.AddScoped<HomeworkPortal.API.Services.INotificationService, Hom
 
 // JWT Ayarlarını Sınıfa Bağlama (Options Pattern)
 builder.Services.Configure<HomeworkPortal.API.Settings.JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+
 // JwtService'i Sisteme Kaydetme
 builder.Services.AddScoped<HomeworkPortal.API.Services.IJwtService, HomeworkPortal.API.Services.JwtService>();
+
 // JWT Middleware (Güvenlik Görevlisi) Ayarı
 builder.Services.AddAuthentication(options =>
 {
@@ -92,6 +98,7 @@ builder.Services.AddAutoMapper(cfg =>
 {
     cfg.AddProfile<HomeworkPortal.API.Helpers.MappingProfile>();
 });
+
 // AuthService
 builder.Services.AddScoped<HomeworkPortal.API.Services.IAuthService, HomeworkPortal.API.Services.AuthService>();
 
@@ -154,17 +161,6 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddCors(options =>
-{
-    options.AddPolicy("AllowMyUI", policy =>
-    {
-        // UI Projemizin portuna izin veriyoruz
-        policy.WithOrigins("https://localhost:7141")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
-    });
-});
-
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -197,10 +193,8 @@ app.UseStaticFiles();
 // Güvenlik Başlıkları
 app.UseMiddleware<HomeworkPortal.API.Middlewares.SecurityHeadersMiddleware>();
 
-//  CORS MİDDLEWARE
+// CORS MİDDLEWARE
 app.UseRouting();
-
-app.UseCors("AllowUI");
 
 app.UseCors("AllowMyUI");
 

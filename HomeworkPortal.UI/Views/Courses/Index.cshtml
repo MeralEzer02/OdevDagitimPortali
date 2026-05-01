@@ -178,20 +178,17 @@
             try {
                 $("#courseTableBody").html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i> Kurslar Yükleniyor...</td></tr>');
 
+                const res = await $.ajax({ url: API_BASE, method: "GET" });
+                const allData = res.data || res || [];
+
+                globalAllCourses = allData;
+
                 if(USER_ROLE === "Student") {
-                    const [allRes, myRes] = await Promise.all([
-                        $.ajax({ url: API_BASE, method: "GET" }).catch(()=>({data:[]})),
-                        $.ajax({ url: `${API_BASE}/student`, method: "GET" }).catch(()=>({data:[]}))
-                    ]);
-                    globalAllCourses = allRes.data || allRes || [];
-                    globalMyCourses = myRes.data || myRes || [];
-                } else {
-                    const res = await $.ajax({ url: API_BASE, method: "GET" });
-                    globalAllCourses = res.data || res || [];
+                    globalMyCourses = allData;
                 }
 
                 applyFiltersAndRender();
-            } catch (err) { handleError(err); }
+             } catch (err) { handleError(err); }
         }
 
         function applyFiltersAndRender() {

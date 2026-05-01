@@ -144,6 +144,8 @@
                         <table class="table table-bordered table-hover align-middle" width="100%">
                             <thead class="thead-dark">
                                 <tr>
+                                    <th>Kurs Adı</th>
+                                    <th>Ödev Başlığı</th>
                                     <th>Öğrenci Adı</th>
                                     <th>Teslim Tarihi</th>
                                     <th>Dosya</th>
@@ -152,7 +154,7 @@
                                 </tr>
                             </thead>
                             <tbody id="teacherSubTableBody">
-                                <tr><td colspan="5" class="text-center text-muted py-5"><i class="fas fa-arrow-left fa-2x mb-3"></i><br>Lütfen soldaki panelden kurs ve ödev seçin.</td></tr>
+                                <tr><td colspan="7" class="text-center text-muted py-5"><i class="fas fa-spinner fa-spin fa-2x mb-3 text-primary"></i><br>Sistemdeki tüm teslimler yükleniyor...</td></tr>
                             </tbody>
                         </table>
                     </div>
@@ -209,62 +211,40 @@
                 $(this).next('.custom-file-label').addClass("selected").html(fileName);
             });
 
-            // ================= ÖĞRENCİ MANTIĞI =================
             if (USER_ROLE === "Student") {
                 loadAllStudentData();
-
                 $("#studentSearch, #statusFilter").on("change keyup", renderStudentSubmissions);
 
                 $("#uploadForm").on("submit", function (e) {
                     e.preventDefault();
-                    const file = $("#studentFile")[0].files[0];
-                    const assignId = $("#selectAssignment").val();
-
                     let formData = new FormData();
-                    formData.append("assignmentId", assignId);
-                    formData.append("file", file);
+                    formData.append("assignmentId", $("#selectAssignment").val());
+                    formData.append("file", $("#studentFile")[0].files[0]);
 
                     $.ajax({
-                        url: API_SUB,
-                        method: "POST",
-                        data: formData,
-                        processData: false,
-                        contentType: false,
+                        url: API_SUB, method: "POST", data: formData, processData: false, contentType: false,
                         beforeSend: function () { $("#btnUpload").prop("disabled", true).text("Yükleniyor..."); },
                         success: function () {
-                            $("#uploadModal").modal("hide");
-                            showToast("Başarılı", "Ödev başarıyla yüklendi!", "success");
-                            $("#uploadForm")[0].reset();
-                            $('#fileLabel').html("Dosya Seç...");
-                            loadAllStudentData();
+                            $("#uploadModal").modal("hide"); showToast("Başarılı", "Ödev başarıyla yüklendi!", "success");
+                            $("#uploadForm")[0].reset(); $('#fileLabel').html("Dosya Seç..."); loadAllStudentData();
                         },
                         error: function (err) { handleError(err); },
                         complete: function () { $("#btnUpload").prop("disabled", false).text("Gönder"); }
                     });
                 });
             }
-            // ================= ÖĞRETMEN / ADMIN MANTIĞI =================
             else {
-                loadTeacherCourses();
+                loadTeacherCoursesAndAllSubmissions();
 
                 $("#teacherCourseSelect").on("change", function() {
                     const courseId = $(this).val();
-                    if(courseId) {
-                        loadTeacherAssignments(courseId);
-                    } else {
-                        $("#teacherAssignmentSelect").empty().append('<option value="">Önce Kurs Seçmelisiniz...</option>').prop("disabled", true);
-                        $("#btnFetchSubmissions").prop("disabled", true);
-                    }
+                    if(courseId) { loadTeacherAssignments(courseId); }
+                    else { $("#teacherAssignmentSelect").empty().append('<option value="">Önce Kurs Seçmelisiniz...</option>').prop("disabled", true); $("#btnFetchSubmissions").prop("disabled", true); }
                 });
 
-                $("#teacherAssignmentSelect").on("change", function() {
-                    $("#btnFetchSubmissions").prop("disabled", !$(this).val());
-                });
+                $("#teacherAssignmentSelect").on("change", function() { $("#btnFetchSubmissions").prop("disabled", !$(this).val()); });
 
-                $("#btnFetchSubmissions").on("click", function() {
-                    const assignId = $("#teacherAssignmentSelect").val();
-                    loadTeacherSubmissions(assignId);
-                });
+                $("#btnFetchSubmissions").on("click", function() { loadTeacherSubmissions($("#teacherAssignmentSelect").val()); });
 
                 $("#gradingForm").on("submit", function (e) {
                     e.preventDefault();
@@ -272,15 +252,14 @@
                     const grade = $("#gradeValue").val();
 
                     $.ajax({
-                        url: `${API_SUB}/${subId}`,
-                        method: "PUT",
+                        url: `${API_SUB}/${subId}/grade`,
+                        method: "POST",
                         contentType: "application/json",
-                        data: JSON.stringify({ id: parseInt(subId), grade: parseInt(grade) }),
+                        data: JSON.stringify({ grade: parseInt(grade) }),
                         beforeSend: function () { $("#btnSaveGrade").prop("disabled", true).text("Kaydediliyor..."); },
                         success: function () {
-                            $("#gradingModal").modal("hide");
-                            showToast("Başarılı", "Not başarıyla kaydedildi.", "success");
-                            $("#btnFetchSubmissions").click();
+                            $("#gradingModal").modal("hide"); showToast("Başarılı", "Not kaydedildi.", "success");
+                            setTimeout(() => location.reload(), 1500);
                         },
                         error: function (err) { handleError(err); },
                         complete: function () { $("#btnSaveGrade").prop("disabled", false).text("Kaydet"); }
@@ -292,31 +271,23 @@
         async function loadAllStudentData() {
             try {
                 $("#studentSubTableBody").html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler toplanıyor...</td></tr>');
-
                 const [subRes, assignRes, courseRes] = await Promise.all([
                     $.ajax({ url: `${API_SUB}/student`, method: "GET" }).catch(() => ({ data: [] })),
                     $.ajax({ url: `${API_ASSIGN}/student`, method: "GET" }).catch(() => ({ data: [] })),
                     $.ajax({ url: API_COURSE, method: "GET" }).catch(() => ({ data: [] }))
                 ]);
-
                 globalStudentSubs = subRes.data || subRes || [];
                 const assignments = assignRes.data || assignRes || [];
                 const courses = courseRes.data || courseRes || [];
 
-                globalCoursesMap = {};
-                courses.forEach(c => globalCoursesMap[c.id] = c.name);
-
-                globalAssignmentsMap = {};
-                assignments.forEach(a => globalAssignmentsMap[a.id] = { title: a.title, courseId: a.courseId, dueDate: a.dueDate });
+                globalCoursesMap = {}; courses.forEach(c => globalCoursesMap[c.id] = c.name);
+                globalAssignmentsMap = {}; assignments.forEach(a => globalAssignmentsMap[a.id] = { title: a.title, courseId: a.courseId, dueDate: a.dueDate });
 
                 let select = $("#selectAssignment").empty().append('<option value="">Lütfen Bekleyen Ödevinizi Seçin...</option>');
                 let submittedIds = globalStudentSubs.map(s => s.assignmentId);
 
                 assignments.forEach(a => {
-                    const isExpired = new Date(a.dueDate) < new Date();
-                    const isSubmitted = submittedIds.includes(a.id);
-
-                    if (!isExpired && !isSubmitted) {
+                    if (new Date(a.dueDate) >= new Date() && !submittedIds.includes(a.id)) {
                         select.append(`<option value="${a.id}">${a.title} (Son: ${new Date(a.dueDate).toLocaleDateString('tr-TR')})</option>`);
                     }
                 });
@@ -324,26 +295,16 @@
                 renderStudentSubmissions();
 
                 if (URL_ASSIGN_ID) {
-                    if (submittedIds.includes(URL_ASSIGN_ID)) {
-                        showToast("Bilgi", "Bu ödevi zaten teslim ettiniz.", "info");
-                    } else {
+                    if (submittedIds.includes(URL_ASSIGN_ID)) { showToast("Bilgi", "Bu ödevi zaten teslim ettiniz.", "info"); }
+                    else {
                         const targetAssign = assignments.find(a => a.id === URL_ASSIGN_ID);
                         if (targetAssign) {
-                            if (new Date(targetAssign.dueDate) < new Date()) {
-                                showToast("Süre Doldu", "Bu ödevin teslim süresi geçmiş.", "warning");
-                            } else {
-                                setTimeout(() => {
-                                    $("#selectAssignment").val(URL_ASSIGN_ID.toString());
-                                    $("#uploadModal").modal("show");
-                                }, 300);
-                            }
+                            if (new Date(targetAssign.dueDate) < new Date()) { showToast("Süre Doldu", "Bu ödevin süresi geçmiş.", "warning"); }
+                            else { setTimeout(() => { $("#selectAssignment").val(URL_ASSIGN_ID.toString()); $("#uploadModal").modal("show"); }, 300); }
                         }
                     }
                 }
-
-            } catch (err) {
-                handleError(err);
-            }
+            } catch (err) { handleError(err); }
         }
 
         function renderStudentSubmissions() {
@@ -351,15 +312,9 @@
             const text = $("#studentSearch").val().toLowerCase();
             const status = $("#statusFilter").val();
 
-            let html = "";
-
             let tableData = filtered.map(item => {
                 const assignInfo = globalAssignmentsMap[item.assignmentId] || { title: "Bilinmeyen Ödev", courseId: 0 };
-                return {
-                    ...item,
-                    title: assignInfo.title,
-                    courseName: globalCoursesMap[assignInfo.courseId] || "Bilinmeyen Kurs"
-                };
+                return { ...item, title: assignInfo.title, courseName: globalCoursesMap[assignInfo.courseId] || "Bilinmeyen Kurs" };
             });
 
             if (text) tableData = tableData.filter(s => s.title.toLowerCase().includes(text));
@@ -367,151 +322,151 @@
             if (status === "WAITING") tableData = tableData.filter(s => s.grade === null);
 
             if (tableData.length === 0) {
-                html = '<tr><td colspan="5" class="text-center py-4">Gösterilecek teslim bulunamadı.</td></tr>';
+                $("#studentSubTableBody").html('<tr><td colspan="5" class="text-center py-4">Gösterilecek teslim bulunamadı.</td></tr>');
             } else {
+                let html = "";
                 tableData.forEach(item => {
-                    const date = new Date(item.submissionDate).toLocaleString('tr-TR');
-                    const gradeBadge = item.grade !== null
-                        ? `<span class="badge badge-success p-2">Notunuz: ${item.grade}</span>`
-                        : `<span class="badge badge-warning text-dark p-2">Değerlendiriliyor</span>`;
-
-                    html += `
-                        <tr>
-                            <td><span class="badge badge-primary p-2">${item.courseName}</span></td>
-                            <td><strong>${item.title}</strong></td>
-                            <td>${date}</td>
-                            <td><a href="${item.filePath}" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-download mr-1"></i>İndir</a></td>
-                            <td>${gradeBadge}</td>
-                        </tr>`;
+                    const gradeBadge = item.grade !== null ? `<span class="badge badge-success p-2">Notunuz: ${item.grade}</span>` : `<span class="badge badge-warning text-dark p-2">Değerlendiriliyor</span>`;
+                    html += `<tr><td><span class="badge badge-primary p-2">${item.courseName}</span></td><td><strong>${item.title}</strong></td><td>${new Date(item.submissionDate).toLocaleString('tr-TR')}</td><td><a href="${item.filePath}" target="_blank" class="btn btn-sm btn-outline-info"><i class="fas fa-download mr-1"></i>İndir</a></td><td>${gradeBadge}</td></tr>`;
                 });
+                $("#studentSubTableBody").html(html);
             }
-            $("#studentSubTableBody").html(html);
         }
 
-        // --- ÖĞRETMEN FONKSİYONLARI ---
-        function loadTeacherCourses() {
-            $.ajax({
-                url: API_COURSE,
-                method: "GET",
-                success: function (res) {
-                    const list = res.data || res;
-                    let select = $("#teacherCourseSelect");
-                    list.forEach(c => select.append(`<option value="${c.id}">${c.name}</option>`));
+        async function loadTeacherCoursesAndAllSubmissions() {
+            try {
+                $("#teacherSubTableBody").html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Sistemdeki tüm teslimler taranıyor...</td></tr>');
+
+                const coursesRes = await $.ajax({ url: API_COURSE, method: "GET" });
+                const courses = coursesRes.data || coursesRes || [];
+
+                globalCoursesMap = {};
+                courses.forEach(c => {
+                    globalCoursesMap[c.id] = c.name;
+                    $("#teacherCourseSelect").append(`<option value="${c.id}">${c.name}</option>`);
+                });
+
+                if(courses.length === 0) {
+                    $("#teacherSubTableBody").html('<tr><td colspan="7" class="text-center text-muted py-4">Sistemde hiç kurs yok.</td></tr>');
+                    return;
                 }
-            });
+
+                const assignPromises = courses.map(c => $.ajax({ url: `${API_ASSIGN}/course/${c.id}`, method: "GET" }).catch(()=>({data:[]})));
+                const assignResults = await Promise.all(assignPromises);
+
+                let allAssignments = [];
+                globalAssignmentsMap = {};
+                assignResults.forEach(res => {
+                    const list = res.data || res || [];
+                    allAssignments = allAssignments.concat(list);
+                    list.forEach(a => globalAssignmentsMap[a.id] = { title: a.title, courseId: a.courseId, dueDate: a.dueDate });
+                });
+
+                const subPromises = allAssignments.map(a => $.ajax({ url: `${API_SUB}/assignment/${a.id}`, method: "GET" }).catch(()=>({data:[]})));
+                const subResults = await Promise.all(subPromises);
+
+                let allSubmissions = [];
+                subResults.forEach(res => { allSubmissions = allSubmissions.concat(res.data || res || []); });
+
+                renderTeacherTableAndChart(allSubmissions);
+
+            } catch (err) { handleError(err); }
         }
 
         function loadTeacherAssignments(courseId) {
             $.ajax({
-                url: `${API_ASSIGN}/course/${courseId}`,
-                method: "GET",
+                url: `${API_ASSIGN}/course/${courseId}`, method: "GET",
                 beforeSend: function() { $("#teacherAssignmentSelect").html('<option>Yükleniyor...</option>'); },
                 success: function (res) {
-                    const list = res.data || res;
+                    const list = res.data || res || [];
                     let select = $("#teacherAssignmentSelect").empty().append('<option value="">Şimdi Bir Ödev Seçin...</option>');
-                    if(list.length > 0) {
-                        list.forEach(a => select.append(`<option value="${a.id}">${a.title}</option>`));
-                        select.prop("disabled", false);
-                    } else {
-                        select.empty().append('<option value="">Bu kursta ödev yok.</option>').prop("disabled", true);
-                        $("#btnFetchSubmissions").prop("disabled", true);
-                    }
+                    if(list.length > 0) { list.forEach(a => select.append(`<option value="${a.id}">${a.title}</option>`)); select.prop("disabled", false); }
+                    else { select.empty().append('<option value="">Bu kursta ödev yok.</option>').prop("disabled", true); $("#btnFetchSubmissions").prop("disabled", true); }
                 }
             });
         }
 
         function loadTeacherSubmissions(assignId) {
             $.ajax({
-                url: `${API_SUB}/assignment/${assignId}`,
-                method: "GET",
-                beforeSend: function () { $("#teacherSubTableBody").html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler Çekiliyor...</td></tr>'); },
-                success: function (res) {
-                    const list = res.data || res;
-                    let html = "";
-
-                    if (!list || list.length === 0) {
-                        $("#teacherSubTableBody").html('<tr><td colspan="5" class="text-center text-muted py-4">Bu ödev için henüz teslim yapılmamış.</td></tr>');
-                        $("#chartCard").addClass("d-none");
-                        return;
-                    }
-
-                    let gradedCount = 0;
-                    let waitingCount = 0;
-
-                    list.forEach(item => {
-                        if(item.grade !== null) gradedCount++; else waitingCount++;
-
-                        const date = new Date(item.submissionDate).toLocaleString('tr-TR');
-                        const gradeBadge = item.grade !== null
-                            ? `<span class="badge badge-success p-2 font-weight-bold">${item.grade}</span>`
-                            : `<span class="badge badge-secondary p-2">Not Girilmedi</span>`;
-
-                        html += `
-                            <tr>
-                                <td><strong class="text-dark">${item.studentFullName || 'Öğrenci Adı'}</strong></td>
-                                <td>${date}</td>
-                                <td><a href="${item.filePath}" target="_blank" class="btn btn-sm btn-info text-white"><i class="fas fa-download mr-1"></i>İndir</a></td>
-                                <td>${gradeBadge}</td>
-                                <td>
-                                    <button class="btn btn-sm btn-warning text-dark font-weight-bold" onclick="openGradeModal(${item.id}, ${item.grade || ''})">
-                                        <i class="fas fa-star mr-1"></i>Not Ver
-                                    </button>
-                                </td>
-                            </tr>`;
-                    });
-                    $("#teacherSubTableBody").html(html);
-                    drawPieChart(gradedCount, waitingCount);
-                },
+                url: `${API_SUB}/assignment/${assignId}`, method: "GET",
+                beforeSend: function () { $("#teacherSubTableBody").html('<tr><td colspan="7" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler Çekiliyor...</td></tr>'); },
+                success: function (res) { renderTeacherTableAndChart(res.data || res || []); },
                 error: function (err) { handleError(err); }
             });
         }
 
+        function renderTeacherTableAndChart(list) {
+            if (!list || list.length === 0) {
+                $("#teacherSubTableBody").html('<tr><td colspan="7" class="text-center text-muted py-4">Bu kriterlerde teslim yapılmamış.</td></tr>');
+                $("#chartCard").addClass("d-none"); return;
+            }
+
+            let gradedCount = 0, waitingCount = 0, html = "";
+            list.forEach(item => {
+                if(item.grade !== null) gradedCount++; else waitingCount++;
+
+                let courseName = "Bilinmeyen Kurs";
+                let assignTitle = "Bilinmeyen Ödev";
+                const assignInfo = globalAssignmentsMap[item.assignmentId];
+                if(assignInfo) {
+                    assignTitle = assignInfo.title;
+                    courseName = globalCoursesMap[assignInfo.courseId] || "Bilinmeyen Kurs";
+                }
+
+                const gradeBadge = item.grade !== null ? `<span class="badge badge-success p-2 font-weight-bold">${item.grade}</span>` : `<span class="badge badge-secondary p-2">Not Girilmedi</span>`;
+
+                html += `
+                    <tr>
+                        <td><span class="badge badge-primary p-2">${courseName}</span></td>
+                        <td><strong>${assignTitle}</strong></td>
+                        <td><strong class="text-dark">${item.studentFullName || 'Öğrenci Adı'}</strong></td>
+                        <td>${new Date(item.submissionDate).toLocaleString('tr-TR')}</td>
+                        <td><a href="${item.filePath}" target="_blank" class="btn btn-sm btn-info text-white"><i class="fas fa-download mr-1"></i>İndir</a></td>
+                        <td>${gradeBadge}</td>
+                        <td><button class="btn btn-sm btn-warning text-dark font-weight-bold" onclick="openGradeModal(${item.id}, ${item.grade || ''})"><i class="fas fa-star mr-1"></i>Not Ver</button></td>
+                    </tr>`;
+            });
+
+            $("#teacherSubTableBody").html(html);
+            drawPieChart(gradedCount, waitingCount);
+        }
+
         function openGradeModal(subId, currentGrade) {
-            $("#gradeSubmissionId").val(subId);
-            $("#gradeValue").val(currentGrade !== null ? currentGrade : "");
-            $("#gradingModal").modal("show");
+            $("#gradeSubmissionId").val(subId); $("#gradeValue").val(currentGrade !== null ? currentGrade : ""); $("#gradingModal").modal("show");
         }
 
         function drawPieChart(graded, waiting) {
-            $("#chartCard").removeClass("d-none");
-            const ctx = document.getElementById('gradePieChart').getContext('2d');
-            if (pieChartInstance) { pieChartInstance.destroy(); }
+                    $("#chartCard").removeClass("d-none");
+                    const ctx = document.getElementById('gradePieChart').getContext('2d');
+                    if (pieChartInstance) { pieChartInstance.destroy(); }
 
-            pieChartInstance = new Chart(ctx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Not Verilenler', 'Bekleyenler'],
-                    datasets: [{
-                        data: [graded, waiting],
-                        backgroundColor: ['#1cc88a', '#f6c23e'],
-                        hoverBackgroundColor: ['#17a673', '#dda20a'],
-                        hoverBorderColor: "rgba(234, 236, 244, 1)",
-                    }],
-                },
-                options: {
-                    maintainAspectRatio: false,
-                    tooltips: { backgroundColor: "rgb(255,255,255)", bodyFontColor: "#858796", borderColor: '#dddfeb', borderWidth: 1, xPadding: 15, yPadding: 15, displayColors: false, caretPadding: 10 },
-                    legend: { display: true, position: 'bottom' },
-                    cutoutPercentage: 70,
-                },
-            });
-        }
+                    pieChartInstance = new Chart(ctx, {
+                        type: 'pie',
+                        data: {
+                            labels: ['Not Verilenler', 'Bekleyenler'],
+                            datasets: [{
+                                data: [graded, waiting],
+                                backgroundColor: ['#1cc88a', '#f6c23e'],
+                                hoverBackgroundColor: ['#17a673', '#dda20a'],
+                                hoverBorderColor: "rgba(234, 236, 244, 1)"
+                            }]
+                        },
+                        options: {
+                            maintainAspectRatio: false,
+                            legend: { position: 'bottom' }
+                        }
+                    });
+                }
 
         function handleError(err) {
-            let errorMsg = "İşlem sırasında beklenmeyen bir hata oluştu.";
-            if (err.responseJSON) {
-                if (err.responseJSON.errors) errorMsg = Object.values(err.responseJSON.errors).flat().join("<br>");
-                else if (err.responseJSON.detail) errorMsg = err.responseJSON.detail;
-                else if (err.responseJSON.message) errorMsg = err.responseJSON.message;
-            }
-            showToast("İşlem Başarısız", errorMsg, "danger");
+            let errorMsg = "İşlem başarısız. API ucu (Endpoint) sistemde bulunamadı veya bağlantı koptu.";
+            if (err.responseJSON && err.responseJSON.detail) errorMsg = err.responseJSON.detail;
+            showToast("Sistem Uyarısı", errorMsg, "danger");
         }
 
         function showToast(title, message, type) {
-            let swalIcon = type === 'danger' ? 'error' : type;
-            let bgColor = type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : '#f6c23e');
-            let txtColor = type === 'warning' ? '#3a3b45' : '#ffffff';
-            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 4000, timerProgressBar: true, background: bgColor, color: txtColor, iconColor: txtColor }).fire({ icon: swalIcon, title: title, text: message });
+            let bgColor = type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : (type === 'info' ? '#36b9cc' : '#f6c23e'));
+            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 5000, timerProgressBar: true, background: bgColor, color: '#fff', iconColor: '#fff' }).fire({ icon: type === 'danger' ? 'error' : type, title: title, text: message });
         }
     </script>
 }

@@ -43,7 +43,6 @@ namespace HomeworkPortal.API.Services
             await _userManager.AddToRoleAsync(user, "Student");
 
             var token = await _jwtService.GenerateTokenAsync(user);
-
             var roles = await _userManager.GetRolesAsync(user);
 
             return new AuthResponseDto
@@ -69,7 +68,6 @@ namespace HomeworkPortal.API.Services
                 throw new Exception("E-posta veya şifre hatalı.");
 
             var token = await _jwtService.GenerateTokenAsync(user);
-
             var roles = await _userManager.GetRolesAsync(user);
 
             return new AuthResponseDto
@@ -95,6 +93,42 @@ namespace HomeworkPortal.API.Services
                 throw new Exception("Rol atama işlemi başarısız oldu.");
 
             return true;
+        }
+
+        public async Task<AuthResponseDto> UpdateProfileAsync(string userId, UpdateProfileDto dto)
+        {
+            var user = await _userManager.FindByIdAsync(userId);
+            if (user == null)
+                throw new Exception("Kullanıcı bulunamadı.");
+
+            user.FirstName = dto.FirstName;
+            user.LastName = dto.LastName;
+
+
+            if (!string.IsNullOrEmpty(dto.NewPassword))
+            {
+                var resetToken = await _userManager.GeneratePasswordResetTokenAsync(user);
+                var passResult = await _userManager.ResetPasswordAsync(user, resetToken, dto.NewPassword);
+
+                if (!passResult.Succeeded)
+                {
+                    var errors = string.Join(", ", passResult.Errors.Select(e => e.Description));
+                    throw new Exception($"Şifre güncellenirken hata oluştu: {errors}");
+                }
+            }
+
+            await _userManager.UpdateAsync(user);
+
+            var token = await _jwtService.GenerateTokenAsync(user);
+            var roles = await _userManager.GetRolesAsync(user);
+
+            return new AuthResponseDto
+            {
+                Token = token,
+                Email = user.Email,
+                FullName = user.FullName,
+                Roles = roles
+            };
         }
     }
 }

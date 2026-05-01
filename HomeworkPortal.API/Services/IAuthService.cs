@@ -7,5 +7,6 @@ namespace HomeworkPortal.API.Services
         Task<AuthResponseDto> RegisterAsync(RegisterDto dto);
         Task<AuthResponseDto> LoginAsync(LoginDto dto);
         Task<bool> AssignRoleAsync(string email, string roleName);
+        Task<AuthResponseDto> UpdateProfileAsync(string userId, UpdateProfileDto dto);
     }
 }
