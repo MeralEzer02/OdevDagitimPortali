@@ -136,5 +136,17 @@ namespace HomeworkPortal.API.Services
             course.TeacherId = teacherId;
             await _unitOfWork.CompleteAsync();
         }
+
+        public async Task<IEnumerable<UserReadDto>> GetEnrolledStudentsAsync(int courseId)
+        {
+            var course = await _unitOfWork.Courses
+                .Where(c => c.Id == courseId, c => c.Students)
+                .FirstOrDefaultAsync();
+
+            if (course == null)
+                throw new Exception("Ders bulunamadı.");
+
+            return _mapper.Map<IEnumerable<UserReadDto>>(course.Students);
+        }
     }
 }

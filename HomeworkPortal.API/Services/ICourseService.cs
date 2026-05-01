@@ -11,5 +11,7 @@ namespace HomeworkPortal.API.Services
         Task<CourseReadDto> GetCourseDetailsAsync(int id);
         Task EnrollStudentAsync(int courseId, string studentId);
         Task AssignTeacherAsync(int courseId, string teacherId);
+
+        Task<IEnumerable<UserReadDto>> GetEnrolledStudentsAsync(int courseId);
     }
 }

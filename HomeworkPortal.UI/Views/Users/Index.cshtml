@@ -4,166 +4,356 @@
 }
 
 <div class="d-sm-flex align-items-center justify-content-between mb-4">
-    <h1 class="h3 mb-0 text-gray-800"><i class="fas fa-users-cog mr-2 text-primary"></i>Kullanıcı Yönetim Merkezi</h1>
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-users-cog mr-2 text-primary"></i>Kullanıcı Yönetim Merkezi
+    </h1>
+    @if (role == "Admin")
+    {
+        <button class="btn btn-primary shadow-sm" data-toggle="modal" data-target="#addUserModal">
+            <i class="fas fa-plus fa-sm text-white-50 mr-2"></i>Yeni Kullanıcı Ekle
+        </button>
+    }
 </div>
 
 @if (role == "Admin")
 {
-    <ul class="nav nav-tabs mb-4 font-weight-bold" id="usersTab" role="tablist">
+    <!-- ADMIN SEKMELİ GÖRÜNÜM -->
+    <ul class="nav nav-tabs" id="userTabs" role="tablist">
         <li class="nav-item">
-            <a class="nav-link active text-primary" data-toggle="tab" href="#tab-pane" role="tab" onclick="switchTab('STUDENTS')">
+            <a class="nav-link active font-weight-bold" id="student-tab" data-toggle="tab" href="#studentTab" role="tab">
                 <i class="fas fa-user-graduate mr-2"></i>Öğrenci Listesi
             </a>
         </li>
         <li class="nav-item">
-            <a class="nav-link text-secondary" data-toggle="tab" href="#tab-pane" role="tab" onclick="switchTab('TEACHERS')">
+            <a class="nav-link font-weight-bold" id="teacher-tab" data-toggle="tab" href="#teacherTab" role="tab">
                 <i class="fas fa-chalkboard-teacher mr-2"></i>Öğretmen Listesi
             </a>
         </li>
     </ul>
 
-    <div class="card shadow mb-4 border-left-info">
-        <div class="card-body py-2">
-            <div class="input-group">
-                <div class="input-group-prepend"><span class="input-group-text bg-white border-right-0"><i class="fas fa-search text-primary"></i></span></div>
-                <input type="text" id="userSearch" class="form-control border-left-0" placeholder="Kullanıcı adı veya e-posta ara...">
+    <div class="card shadow mb-4 border-top-0">
+        <div class="card-body">
+            <div class="form-group mb-4">
+                <div class="input-group">
+                    <div class="input-group-prepend"><span class="input-group-text bg-primary text-white"><i class="fas fa-search"></i></span></div>
+                    <input type="text" class="form-control" id="adminUserSearch" placeholder="İsim veya e-posta ile ara...">
+                </div>
+            </div>
+            <div class="tab-content">
+                <div class="tab-pane fade show active" id="studentTab">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="thead-dark"><tr><th>Öğrenci Adı</th><th>E-Posta</th><th>Kayıtlı Kurslar</th><th>İşlem</th></tr></thead>
+                            <tbody id="adminStudentTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="tab-pane fade" id="teacherTab">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="thead-dark"><tr><th>Öğretmen Adı</th><th>E-Posta</th><th>Açtığı Kurslar</th><th>İşlem</th></tr></thead>
+                            <tbody id="adminTeacherTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
+}
 
-    <div class="card shadow mb-4">
+@if (role == "Teacher")
+{
+    <!-- ÖĞRETMEN FİLTRELİ GÖRÜNÜM -->
+    <div class="card shadow mb-4 border-left-info">
         <div class="card-body">
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <label class="font-weight-bold">Kurs Filtresi</label>
+                    <select id="courseSelect" class="form-control"><option value="ALL">Tüm Kurslarım</option></select>
+                </div>
+                <div class="col-md-6">
+                    <label class="font-weight-bold">Öğrenci Ara</label>
+                    <input type="text" id="teacherStudentSearch" class="form-control" placeholder="Ad veya e-posta...">
+                </div>
+            </div>
             <div class="table-responsive">
-                <table class="table table-bordered table-hover align-middle" width="100%">
-                    <thead class="thead-dark" id="userTableHeader">
-                    </thead>
-                    <tbody id="userTableBody">
+                <table class="table table-bordered table-hover align-middle">
+                    <thead class="thead-dark"><tr><th>Öğrenci Adı</th><th>E-Posta</th><th>Kurslar</th></tr></thead>
+                    <tbody id="studentTableBody">
+                        <tr><td colspan="3" class="text-center text-muted">Öğrenciler yükleniyor...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
 }
-else
-{
-    <div class="alert alert-danger text-center shadow py-5">
-        <i class="fas fa-lock fa-4x mb-3 text-danger"></i>
-        <h4 class="font-weight-bold">Erişim Reddedildi</h4>
-        <p>Bu sayfayı görüntüleme yetkiniz yok. Sadece sistem yöneticileri (Admin) erişebilir.</p>
+
+<!-- ================= MODALLAR ================= -->
+<div class="modal fade" id="addUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white"><h5 class="modal-title">Yeni Kullanıcı</h5></div>
+            <form id="addUserForm">
+                <div class="modal-body">
+                    <div class="form-row"><div class="col-6"><label>Ad</label><input type="text" name="firstName" class="form-control" required></div><div class="col-6"><label>Soyad</label><input type="text" name="lastName" class="form-control" required></div></div>
+                    <div class="mt-2"><label>E-Posta</label><input type="email" name="email" class="form-control" required></div>
+                    <div class="mt-2"><label>Şifre</label><input type="password" name="password" class="form-control" required></div>
+                    <div class="mt-2"><label>Rol</label><select name="role" class="form-control"><option value="Student">Öğrenci</option><option value="Teacher">Öğretmen</option></select></div>
+                </div><div class="modal-footer text-right"><button type="submit" class="btn btn-primary">Kaydet</button></div>
+            </form>
+        </div>
     </div>
-}
+</div>
+
+<div class="modal fade" id="editUserModal" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-warning"><h5 class="modal-title font-weight-bold">Kullanıcıyı Düzenle</h5></div>
+            <form id="editUserForm">
+                <input type="hidden" id="editUserId" name="id">
+                <div class="modal-body">
+                    <div class="form-row">
+                        <div class="col-6"><label>Ad</label><input type="text" id="editFirstName" name="firstName" class="form-control" required></div>
+                        <div class="col-6"><label>Soyad</label><input type="text" id="editLastName" name="lastName" class="form-control" required></div>
+                    </div>
+                    <div class="mt-3">
+                        <label class="font-weight-bold">Kurs Yönetimi (Toggle List)</label>
+                        <div id="courseToggleList" class="border p-3 rounded bg-light" style="max-height: 250px; overflow-y: auto;"></div>
+                    </div>
+                </div>
+                <div class="modal-footer"><button type="submit" class="btn btn-warning font-weight-bold">Güncelle</button></div>
+            </form>
+        </div>
+    </div>
+</div>
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        const API_USERS = "https://localhost:7113/api/Users";
-        const API_COURSES = "https://localhost:7113/api/Courses";
+        const API_BASE = "https://localhost:7113/api";
+        const ROLE = "@role";
 
-        let CURRENT_TAB = "STUDENTS";
-        let globalUsers = [];
-        let globalCourses = [];
+        let allUsers = [];
+        let allCourses = [];
+        let studentCoursesMap = {};
+        let teacherStudentsMap = new Map();
 
         $(document).ready(function () {
-            $('.nav-link').on('click', function() {
-                $('.nav-link').removeClass('text-primary').addClass('text-secondary');
-                $(this).removeClass('text-secondary').addClass('text-primary');
-            });
-
-            $("#userSearch").on("keyup", renderUsers);
-
-            if ("@role" === "Admin") {
-                loadAllData();
+            if (ROLE === "Admin") {
+                $("#addUserForm").on("submit", handleAddUser);
+                $("#editUserForm").on("submit", handleUpdateUser);
+                $("#adminUserSearch").on("keyup", renderAdminUsers);
+                loadAdminData();
+            } else if (ROLE === "Teacher") {
+                $("#courseSelect").on("change", renderTeacherStudents);
+                $("#teacherStudentSearch").on("keyup", renderTeacherStudents);
+                loadTeacherData();
             }
         });
 
-        function switchTab(tabName) {
-            CURRENT_TAB = tabName;
-            $("#userSearch").val('');
-            renderUsers();
-        }
-
-        async function loadAllData() {
+        // ==========================================
+        // 1. ADMIN FONKSİYONLARI
+        // ==========================================
+        async function loadAdminData() {
             try {
-                $("#userTableBody").html('<tr><td colspan="4" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler Çekiliyor...</td></tr>');
+                const users = await $.ajax({ url: `${API_BASE}/Users`, method: "GET" });
+                allUsers = users || [];
 
-                const [userRes, courseRes] = await Promise.all([
-                    $.ajax({ url: API_USERS, method: "GET" }).catch(err => {
-                        showToast("API Hatası", "/api/Users ucu bulunamadı! C# kodunuzu kontrol edin.", "danger");
-                        return { data: [] };
-                    }),
-                    $.ajax({ url: API_COURSES, method: "GET" }).catch(()=>({data:[]}))
-                ]);
+                const courses = await $.ajax({ url: `${API_BASE}/Courses`, method: "GET" });
+                allCourses = courses.data || courses || [];
 
-                globalUsers = userRes.data || userRes || [];
-                globalCourses = courseRes.data || courseRes || [];
+                studentCoursesMap = {};
+                const promises = allCourses.map(c =>
+                    $.ajax({ url: `${API_BASE}/Courses/${c.id}/students`, method: "GET" })
+                     .then(st => ({ id: c.id, name: c.name, students: st || [] }))
+                     .catch(() => ({ id: c.id, name: c.name, students: [] }))
+                );
 
-                renderUsers();
-            } catch(err) {
-                $("#userTableBody").html('<tr><td colspan="4" class="text-center text-danger py-4">Kullanıcılar yüklenemedi.</td></tr>');
+                const coursesWithStudents = await Promise.all(promises);
+                coursesWithStudents.forEach(cs => {
+                    cs.students.forEach(s => {
+                        if (!studentCoursesMap[s.id]) studentCoursesMap[s.id] = [];
+                        studentCoursesMap[s.id].push(cs.name);
+                    });
+                });
+
+                renderAdminUsers();
+            } catch (e) { console.error("Admin veri yükleme hatası:", e); }
+        }
+
+        function renderAdminUsers() {
+            const search = $("#adminUserSearch").val().toLowerCase();
+            const students = allUsers.filter(u => u.roles.includes("Student") && (u.fullName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)));
+            const teachers = allUsers.filter(u => u.roles.includes("Teacher") && (u.fullName.toLowerCase().includes(search) || u.email.toLowerCase().includes(search)));
+
+            let sHtml = "", tHtml = "";
+            students.forEach(u => {
+                const courseNames = studentCoursesMap[u.id] || [];
+                const badges = courseNames.length > 0 ? courseNames.map(c => `<span class="badge badge-info mr-1">${c}</span>`).join('') : "-";
+
+                sHtml += `<tr><td>${u.fullName}</td><td>${u.email}</td><td>${badges}</td>
+                    <td><button class="btn btn-sm btn-warning mr-1" onclick="openEditModal('${u.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+
+            teachers.forEach(u => {
+                const myOpenedCourses = allCourses.filter(c => c.teacherId === u.id).map(c => c.name);
+                const tBadges = myOpenedCourses.length > 0 ? myOpenedCourses.map(c => `<span class="badge badge-success mr-1">${c}</span>`).join('') : "-";
+
+                tHtml += `<tr><td>${u.fullName}</td><td>${u.email}</td><td>${tBadges}</td>
+                    <td><button class="btn btn-sm btn-warning mr-1" onclick="openEditModal('${u.id}')"><i class="fas fa-edit"></i></button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser('${u.id}')"><i class="fas fa-trash"></i></button></td></tr>`;
+            });
+
+            $("#adminStudentTableBody").html(sHtml || '<tr><td colspan="4" class="text-center text-warning">Kullanıcı bulunamadı.</td></tr>');
+            $("#adminTeacherTableBody").html(tHtml || '<tr><td colspan="4" class="text-center text-warning">Kullanıcı bulunamadı.</td></tr>');
+        }
+
+        function openEditModal(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            $("#editUserId").val(user.id);
+            $("#editFirstName").val(user.fullName.split(' ')[0] || '');
+            $("#editLastName").val(user.fullName.split(' ').slice(1).join(' ') || '');
+
+            if (user.roles.includes("Student")) {
+                let html = "";
+                const enrolledNames = studentCoursesMap[user.id] || [];
+
+                allCourses.forEach(c => {
+                    const isEnrolled = enrolledNames.includes(c.name);
+                    html += `
+                        <div class="custom-control custom-switch mb-2 border-bottom pb-2">
+                            <input type="checkbox" class="custom-control-input" id="sw_${c.id}" ${isEnrolled ? 'checked' : ''}
+                                   onchange="toggleCourseEnroll('${userId}', ${c.id}, this.checked)">
+                            <label class="custom-control-label" for="sw_${c.id}">${c.name}</label>
+                        </div>`;
+                });
+                $("#courseToggleList").html(html);
+            } else {
+                $("#courseToggleList").html('<div class="text-muted small">Öğretmenler için kurs ataması bu panelden yapılamaz.</div>');
+            }
+
+            $('#editUserModal').modal('show');
+        }
+
+        function toggleCourseEnroll(sid, cid, enroll) {
+            const actionUrl = enroll
+                ? `${API_BASE}/Courses/${cid}/assign-student?studentId=${sid}`
+                : `${API_BASE}/Courses/${cid}/remove-student?studentId=${sid}`;
+
+            $.post(actionUrl).done(() => loadAdminData()).fail(() => {
+                Swal.fire('Hata', 'İşlem başarısız.', 'error');
+                $(`#sw_${cid}`).prop('checked', !enroll);
+            });
+        }
+
+        function handleAddUser(e) {
+            e.preventDefault();
+            const data = Object.fromEntries(new FormData(this));
+            $.ajax({
+                url: `${API_BASE}/Auth/register`,
+                method: "POST",
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: () => { $('#addUserModal').modal('hide'); Swal.fire('Başarılı', 'Kullanıcı eklendi.', 'success'); loadAdminData(); },
+                error: (err) => Swal.fire('Hata', err.responseJSON?.message || 'Ekleme başarısız', 'error')
+            });
+        }
+
+        function handleUpdateUser(e) {
+            e.preventDefault();
+            const userId = $("#editUserId").val();
+            const data = { firstName: $("#editFirstName").val(), lastName: $("#editLastName").val() };
+
+            $.ajax({
+                url: `${API_BASE}/Users/${userId}`,
+                method: "PUT",
+                contentType: "application/json",
+                data: JSON.stringify(data),
+                success: () => { $('#editUserModal').modal('hide'); Swal.fire('Başarılı', 'Güncellendi.', 'success'); loadAdminData(); },
+                error: () => Swal.fire('Hata', 'Güncelleme başarısız.', 'error')
+            });
+        }
+
+        function deleteUser(id) {
+            Swal.fire({ title: 'Emin misiniz?', icon: 'warning', showCancelButton: true }).then(r => {
+                if(r.isConfirmed) $.ajax({ url: `${API_BASE}/Users/${id}`, method: "DELETE", success: () => loadAdminData() });
+            });
+        }
+
+        // ==========================================
+        // 2. ÖĞRETMEN FONKSİYONLARI
+        // ==========================================
+        async function loadTeacherData() {
+            try {
+                const coursesReq = await $.ajax({ url: `${API_BASE}/Courses`, method: "GET" });
+                const courses = coursesReq.data || coursesReq || [];
+
+                teacherStudentsMap.clear();
+                let select = $("#courseSelect").empty().append('<option value="ALL">Tüm Kurslarım</option>');
+
+                const promises = courses.map(c =>
+                    $.ajax({ url: `${API_BASE}/Courses/${c.id}/students`, method: "GET" })
+                     .then(st => ({ id: c.id, name: c.name, teacherId: c.teacherId, students: st || [] }))
+                     .catch(() => ({ id: c.id, name: c.name, teacherId: c.teacherId, students: [] }))
+                );
+
+                const coursesWithStudents = await Promise.all(promises);
+                const myUserId = getUserIdFromToken();
+
+                coursesWithStudents.forEach(cs => {
+                    const originalCourse = courses.find(c => c.id === cs.id);
+                    const isMyCourse = myUserId ? (originalCourse.teacherId === myUserId) : true;
+
+                    if (isMyCourse && cs.students.length > 0) {
+                        select.append(`<option value="${cs.id}">${cs.name}</option>`);
+                        cs.students.forEach(s => {
+                            if (!teacherStudentsMap.has(s.id)) {
+                                teacherStudentsMap.set(s.id, { ...s, courses: [cs.name], courseIds: [cs.id] });
+                            } else {
+                                const existing = teacherStudentsMap.get(s.id);
+                                existing.courses.push(cs.name);
+                                existing.courseIds.push(cs.id);
+                            }
+                        });
+                    }
+                });
+
+                renderTeacherStudents();
+            } catch (e) {
+                console.error("Öğretmen veri yükleme hatası:", e);
+                $("#studentTableBody").html('<tr><td colspan="3" class="text-center text-danger">Veriler yüklenirken hata oluştu.</td></tr>');
             }
         }
 
-        function renderUsers() {
-            let targetRole = CURRENT_TAB === "STUDENTS" ? "Student" : "Teacher";
-            let filtered = globalUsers.filter(u => u.role === targetRole);
+        function getUserIdFromToken() {
+            try {
+                let token = typeof jwtToken !== 'undefined' ? jwtToken : localStorage.getItem("token");
+                if(!token) return null;
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload["http://schemas.xmlsoap.org/ws/2005/05/identity/claims/nameidentifier"] || payload.sub || payload.nameid;
+            } catch(e) { return null; }
+        }
 
-            const searchText = $("#userSearch").val().toLowerCase();
-            if (searchText) {
-                filtered = filtered.filter(u => (u.fullName && u.fullName.toLowerCase().includes(searchText)) || (u.email && u.email.toLowerCase().includes(searchText)));
-            }
+        function renderTeacherStudents() {
+            const cid = $("#courseSelect").val();
+            const search = $("#teacherStudentSearch").val().toLowerCase();
+            let list = Array.from(teacherStudentsMap.values());
 
-            if (CURRENT_TAB === "STUDENTS") {
-                $("#userTableHeader").html('<tr><th>Öğrenci Adı</th><th>E-Posta Adresi</th><th>Kayıtlı Olduğu Kurslar</th><th>Sistem İşlemi</th></tr>');
-            } else {
-                $("#userTableHeader").html('<tr><th>Öğretmen Adı</th><th>E-Posta Adresi</th><th>Açtığı Kurslar</th><th>Sistem İşlemi</th></tr>');
-            }
+            if (cid !== "ALL") list = list.filter(s => s.courseIds.includes(parseInt(cid)));
+            if (search) list = list.filter(s => s.fullName.toLowerCase().includes(search) || s.email.toLowerCase().includes(search));
 
             let html = "";
-            if (filtered.length === 0) {
-                html = `<tr><td colspan="4" class="text-center text-muted py-4">Sistemde bu rolde kullanıcı bulunamadı veya API veriyi getirmedi.</td></tr>`;
-            } else {
-                filtered.forEach(u => {
-                    let extraColumn = "";
-                    if (CURRENT_TAB === "TEACHERS") {
-                        let teacherCourses = globalCourses.filter(c => c.teacherId === u.id);
-                        if (teacherCourses.length > 0) {
-                            let badges = teacherCourses.map(c => `<span class="badge badge-info mr-1 mb-1 p-2">${c.name}</span>`).join('');
-                            extraColumn = `<td>${badges}</td>`;
-                        } else {
-                            extraColumn = `<td><span class="badge badge-secondary p-2">Henüz kurs açmamış</span></td>`;
-                        }
-                    } else if (CURRENT_TAB === "STUDENTS") {
-                        if (u.courses && u.courses.length > 0) {
-                            let badges = u.courses.map(c => `<span class="badge badge-primary mr-1 mb-1 p-2">${c.name || c}</span>`).join('');
-                            extraColumn = `<td>${badges}</td>`;
-                        } else {
-                            let studentCourses = globalCourses.filter(c => c.studentIds && c.studentIds.includes(u.id));
-                            if (studentCourses.length > 0) {
-                                let badges = studentCourses.map(c => `<span class="badge badge-primary mr-1 mb-1 p-2">${c.name}</span>`).join('');
-                                extraColumn = `<td>${badges}</td>`;
-                            } else {
-                                extraColumn = `<td><span class="badge badge-secondary p-2">Kayıtlı kursu yok</span></td>`;
-                            }
-                        }
-                    }
+            list.forEach(s => {
+                const badges = s.courses.map(c => `<span class="badge badge-primary mr-1">${c}</span>`).join('');
+                html += `<tr><td>${s.fullName}</td><td>${s.email}</td><td>${badges}</td></tr>`;
+            });
 
-                    html += `
-                        <tr>
-                            <td><strong class="text-dark"><i class="fas fa-user-circle text-gray-500 mr-2"></i>${u.fullName || 'İsimsiz'}</strong></td>
-                            <td>${u.email}</td>
-                            ${extraColumn}
-                            <td><button class="btn btn-sm btn-outline-danger" disabled><i class="fas fa-ban mr-1"></i>Engelle</button></td>
-                        </tr>`;
-                });
+            if (list.length === 0) {
+                html = '<tr><td colspan="3" class="text-center text-warning">Hiç öğrenci bulunamadı.</td></tr>';
             }
-            $("#userTableBody").html(html);
-        }
 
-        function showToast(title, message, type) {
-            let swalIcon = type === 'danger' ? 'error' : type;
-            let bgColor = type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : '#f6c23e');
-            let txtColor = type === 'warning' ? '#3a3b45' : '#ffffff';
-            Swal.mixin({ toast: true, position: 'bottom-end', showConfirmButton: false, timer: 6000, timerProgressBar: true, background: bgColor, color: txtColor, iconColor: txtColor }).fire({ icon: swalIcon, title: title, text: message });
+            $("#studentTableBody").html(html);
         }
     </script>
 }

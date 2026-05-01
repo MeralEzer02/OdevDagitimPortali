@@ -1,8 +1,276 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Dashboard";
+    var role = ViewBag.Role as string;
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<div class="d-sm-flex align-items-center justify-content-between mb-4">
+    <h1 class="h3 mb-0 text-gray-800">
+        <i class="fas fa-tachometer-alt mr-2 text-primary"></i>Sistem Özeti (Dashboard)
+    </h1>
 </div>
+
+@if (role == "Admin" || role == "Teacher")
+{
+    var isTeacher = role == "Teacher";
+
+    <div class="row">
+        <!-- 4 Adet İstatistik Kartı -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-primary shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">@(isTeacher ? "Öğrencilerim" : "Toplam Öğrenci")</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stat-widget" id="statTotalStudents">--</div>
+                        </div>
+                        <div class="col-auto"><i class="fas fa-user-graduate fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-success shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-success text-uppercase mb-1">@(isTeacher ? "Kurslarım" : "Toplam Öğretmen")</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stat-widget" id="statTotalTeachersOrCourses">--</div>
+                        </div>
+                        <div class="col-auto"><i class="fas @(isTeacher ? "fa-book-reader" : "fa-chalkboard-teacher") fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-info shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-info text-uppercase mb-1">@(isTeacher ? "Verilen Ödevler" : "Açılan Kurs Sayısı")</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stat-widget" id="statTotalCoursesOrAssignments">--</div>
+                        </div>
+                        <div class="col-auto"><i class="fas @(isTeacher ? "fa-tasks" : "fa-book") fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card border-left-warning shadow h-100 py-2">
+                <div class="card-body">
+                    <div class="row no-gutters align-items-center">
+                        <div class="col mr-2">
+                            <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">@(isTeacher ? "Bekleyen Okumalar" : "Sistemdeki Ödevler")</div>
+                            <div class="h5 mb-0 font-weight-bold text-gray-800 stat-widget" id="statTotalAssignmentsOrPending">--</div>
+                        </div>
+                        <div class="col-auto"><i class="fas @(isTeacher ? "fa-clipboard-check" : "fa-file-alt") fa-2x text-gray-300"></i></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ödevleri İkiye Böldüğümüz Kısım -->
+    <div class="row">
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-success"><i class="fas fa-clock mr-2"></i>Tüm Aktif Ödevler (Yaklaşan)</h6>
+                    <a href="/Assignments" class="btn btn-sm btn-outline-success font-weight-bold">Tümünü Görüntüle</a>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush" id="activeAssignmentsList">
+                        <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-danger"><i class="fas fa-exclamation-circle mr-2"></i>Süresi Dolmuş Ödevler</h6>
+                    <a href="/Assignments" class="btn btn-sm btn-outline-danger font-weight-bold">Tümünü Görüntüle</a>
+                </div>
+                <div class="card-body p-0">
+                    <ul class="list-group list-group-flush" id="expiredAssignmentsList">
+                        <li class="list-group-item text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Kurslar Tablosu -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4">
+                <div class="card-header py-3 bg-white d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary"><i class="fas fa-list mr-2"></i>Sistemdeki Son Kurslar</h6>
+                    <a href="/Courses" class="btn btn-sm btn-outline-primary font-weight-bold">Tümünü Görüntüle</a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-hover align-middle">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Kurs Adı</th>
+                                    <th>Açıklama</th>
+                                    @if (!isTeacher)
+                                    {
+                                        <th>Sorumlu Öğretmen</th>
+                                    }
+                                    <th class="text-center">Kayıtlı Öğrenci</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dashboardCoursesTable">
+                                <tr><td colspan="@(isTeacher ? "3" : "4")" class="text-center text-muted"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <!-- ================= ÖĞRENCİ KARŞILAMA EKRANI ================= -->
+    <div class="row">
+        <div class="col-lg-12">
+            <div class="card shadow mb-4 border-bottom-primary">
+                <div class="card-body text-center py-5">
+                    <div class="mb-4">
+                        <i class="fas fa-laptop-code fa-5x text-primary opacity-50"></i>
+                    </div>
+                    <h2 class="font-weight-bold text-gray-800">HomeworkPortal'a Hoş Geldiniz!</h2>
+                    <p class="text-muted mb-4">Eğitim sürecinizi yönetmek, ödevlerinizi takip etmek ve derslerinize erişmek için sol taraftaki menüyü kullanabilirsiniz.</p>
+                    <a href="/Courses" class="btn btn-primary px-4 py-2 shadow-sm mr-2"><i class="fas fa-book-open mr-2"></i>Derslerimi Gör</a>
+                    <a href="/Assignments" class="btn btn-success px-4 py-2 shadow-sm"><i class="fas fa-upload mr-2"></i>Ödevlerime Bak</a>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/tr.min.js"></script>
+
+    <script>
+        const USER_ROLE = "@role";
+        const API_BASE = "https://localhost:7113/api";
+
+        $(document).ready(function () {
+            moment.locale('tr');
+
+            if (USER_ROLE === "Admin") {
+                loadDashboardData("admin");
+            } else if (USER_ROLE === "Teacher") {
+                loadDashboardData("teacher");
+            }
+        });
+
+        function loadDashboardData(rolePath) {
+            $.ajax({
+                url: `${API_BASE}/Dashboard/${rolePath}`,
+                method: "GET",
+                beforeSend: function () {
+                    $(".stat-widget").html('<i class="fas fa-spinner fa-spin text-primary"></i>');
+                },
+                success: function (res) {
+                    if (rolePath === "admin") {
+                        $("#statTotalStudents").text(res.totalStudents);
+                        $("#statTotalTeachersOrCourses").text(res.totalTeachers);
+                        $("#statTotalCoursesOrAssignments").text(res.totalCourses);
+                        $("#statTotalAssignmentsOrPending").text(res.totalAssignments);
+                    } else {
+                        $("#statTotalStudents").text(res.myTotalStudents);
+                        $("#statTotalTeachersOrCourses").text(res.myTotalCourses);
+                        $("#statTotalCoursesOrAssignments").text(res.myTotalAssignments);
+                        $("#statTotalAssignmentsOrPending").text(res.pendingSubmissions);
+                    }
+
+                    const now = moment();
+                    const fiveDaysLater = moment().add(5, 'days');
+
+                    let activeList = (res.activeAssignments || [])
+                        .filter(a => moment(a.dueDate).isBetween(now, fiveDaysLater, null, '[]'))
+                        .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))
+                        .slice(0, 3);
+                    renderAssignmentList(activeList, "#activeAssignmentsList", "Yaklaşan (5 gün içinde) aktif ödev bulunmuyor.", "success");
+
+                    let expiredList = (res.expiredAssignments || [])
+                        .filter(a => moment(a.dueDate).isBefore(now))
+                        .sort((a, b) => new Date(b.dueDate) - new Date(a.dueDate))
+                        .slice(0, 3);
+                    renderAssignmentList(expiredList, "#expiredAssignmentsList", "Süresi dolmuş ödev yok.", "danger");
+
+                    let coursesList = (res.recentCourses || [])
+                        .sort((a, b) => b.id - a.id)
+                        .slice(0, 5);
+                    renderCoursesTable(coursesList, rolePath === "teacher");
+                },
+                error: function (xhr) {
+                    $(".stat-widget").text("Hata!");
+                    if (xhr.status === 401 || xhr.status === 403) {
+                        Swal.fire("Yetki Hatası", "Dashboard verilerini görüntüleme yetkiniz yok.", "warning");
+                    } else {
+                        Swal.fire("Bağlantı Hatası", "Dashboard verileri alınamadı.", "error");
+                    }
+                }
+            });
+        }
+
+        function renderAssignmentList(assignments, containerId, emptyMessage, badgeType) {
+            if (!assignments || assignments.length === 0) {
+                $(containerId).html(`<li class="list-group-item text-center text-muted py-3">${emptyMessage}</li>`);
+                return;
+            }
+
+            let html = "";
+            assignments.forEach(a => {
+                const timeString = moment(a.dueDate).fromNow();
+                html += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <div class="font-weight-bold text-dark">${a.title}</div>
+                            <div class="small text-muted">${a.courseName}</div>
+                        </div>
+                        <span class="badge badge-${badgeType} badge-pill px-3 py-2">${timeString}</span>
+                    </li>
+                `;
+            });
+            $(containerId).html(html);
+        }
+
+        function renderCoursesTable(courses, isTeacher) {
+            if (!courses || courses.length === 0) {
+                const colSpan = isTeacher ? "3" : "4";
+                $("#dashboardCoursesTable").html(`<tr><td colspan="${colSpan}" class="text-center text-muted py-4">Gösterilecek kurs bulunamadı.</td></tr>`);
+                return;
+            }
+
+            let html = "";
+            courses.forEach(c => {
+                let teacherCol = isTeacher ? "" : `<td><span class="badge badge-info p-2"><i class="fas fa-chalkboard-teacher mr-1"></i>${c.teacherFullName || 'Atanmadı'}</span></td>`;
+                html += `
+                    <tr>
+                        <td><strong class="text-dark">${c.name}</strong></td>
+                        <td>${c.description || '-'}</td>
+                        ${teacherCol}
+                        <td class="text-center">
+                            <span class="badge badge-primary p-2" style="font-size: 0.9em;">
+                                <i class="fas fa-users mr-1"></i> ${c.enrolledStudentCount} Öğrenci
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            $("#dashboardCoursesTable").html(html);
+        }
+    </script>
+}

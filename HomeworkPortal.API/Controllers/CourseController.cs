@@ -1,7 +1,10 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using HomeworkPortal.API.DTOs;
 using HomeworkPortal.API.Services;
+using HomeworkPortal.API.Data;
+using HomeworkPortal.API.Models;
 
 namespace HomeworkPortal.API.Controllers
 {
@@ -12,11 +15,13 @@ namespace HomeworkPortal.API.Controllers
     {
         private readonly ICourseService _courseService;
         private readonly ICurrentUserService _currentUserService;
+        private readonly AppDbContext _context;
 
-        public CoursesController(ICourseService courseService, ICurrentUserService currentUserService)
+        public CoursesController(ICourseService courseService, ICurrentUserService currentUserService, AppDbContext context)
         {
             _courseService = courseService;
             _currentUserService = currentUserService;
+            _context = context;
         }
 
         [HttpPost]
@@ -46,7 +51,6 @@ namespace HomeworkPortal.API.Controllers
         public async Task<IActionResult> UpdateCourse(int id, [FromBody] CourseUpdateDto dto)
         {
             if (dto.Id == 0) dto.Id = id;
-
             await _courseService.UpdateCourseAsync(id, dto);
             return Ok(new { message = "Kurs başarıyla güncellendi." });
         }
@@ -76,6 +80,55 @@ namespace HomeworkPortal.API.Controllers
         {
             await _courseService.DeleteCourseAsync(id);
             return Ok(new { message = "Ders başarıyla silindi." });
+        }
+
+        [HttpGet("{id}/students")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> GetEnrolledStudents(int id)
+        {
+            try
+            {
+                var result = await _courseService.GetEnrolledStudentsAsync(id);
+                return Ok(result);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
+
+        [HttpPost("{id}/assign-student")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> AssignStudentToCourse(int id, [FromQuery] string studentId)
+        {
+            var course = await _context.Courses.Include(c => c.Students).FirstOrDefaultAsync(c => c.Id == id);
+            if (course == null) return NotFound(new { message = "Kurs bulunamadı." });
+
+            var student = await _context.Users.FindAsync(studentId);
+            if (student == null) return NotFound(new { message = "Öğrenci bulunamadı." });
+
+            if (!course.Students.Any(s => s.Id == studentId))
+            {
+                course.Students.Add((AppUser)student);
+                await _context.SaveChangesAsync();
+            }
+            return Ok(new { message = "Öğrenci kursa başarıyla eklendi." });
+        }
+
+        [HttpPost("{id}/remove-student")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> RemoveStudentFromCourse(int id, [FromQuery] string studentId)
+        {
+            var course = await _context.Courses.Include(c => c.Students).FirstOrDefaultAsync(c => c.Id == id);
+            if (course == null) return NotFound(new { message = "Kurs bulunamadı." });
+
+            var student = course.Students.FirstOrDefault(s => s.Id == studentId);
+            if (student != null)
+            {
+                course.Students.Remove(student);
+                await _context.SaveChangesAsync();
+            }
+            return Ok(new { message = "Öğrenci kurstan başarıyla çıkarıldı." });
         }
     }
 }

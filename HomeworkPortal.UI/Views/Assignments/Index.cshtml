@@ -49,29 +49,68 @@
     </div>
 </div>
 
-<div class="card shadow mb-4">
+<ul class="nav nav-tabs" id="assignmentTabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link active font-weight-bold text-success" id="active-tab" data-toggle="tab" href="#activeTab" role="tab">
+            <i class="fas fa-clock mr-1"></i> Aktif Ödevler
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link font-weight-bold text-danger" id="expired-tab" data-toggle="tab" href="#expiredTab" role="tab">
+            <i class="fas fa-exclamation-circle mr-1"></i> Süresi Geçenler
+        </a>
+    </li>
+</ul>
+
+<div class="card shadow mb-4 border-top-0">
     <div class="card-body">
-        <div class="table-responsive">
-            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
-                <thead class="thead-dark">
-                    <tr>
-                        <th>İlgili Kurs</th>
-                        <th>Ödev Başlığı</th>
-                        <th>Açıklama</th>
-                        <th>Son Teslim Tarihi</th>
-                        <th>İşlem</th>
-                    </tr>
-                </thead>
-                <tbody id="assignmentTableBody">
-                </tbody>
-            </table>
+        <div class="tab-content">
+            <div class="tab-pane fade show active" id="activeTab" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>İlgili Kurs</th>
+                                <th>Ödev Başlığı</th>
+                                <th>Açıklama</th>
+                                <th>Son Teslim Tarihi</th>
+                                <th>Durum</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="activeAssignmentsTableBody">
+                            <tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="tab-pane fade" id="expiredTab" role="tabpanel">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>İlgili Kurs</th>
+                                <th>Ödev Başlığı</th>
+                                <th>Açıklama</th>
+                                <th>Son Teslim Tarihi</th>
+                                <th>Durum</th>
+                                <th>İşlem</th>
+                            </tr>
+                        </thead>
+                        <tbody id="expiredAssignmentsTableBody">
+                            <tr><td colspan="6" class="text-center text-muted py-4"><i class="fas fa-spinner fa-spin mr-2"></i>Yükleniyor...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 
-@* Ödev Verme Modalı (Dışarı Tıklama Kapatıldı) *@
 @if (role == "Teacher" || role == "Admin")
 {
+    <!-- Yeni Ödev Modalı -->
     <div class="modal fade" id="assignmentModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -108,7 +147,7 @@
         </div>
     </div>
 
-    @* Ödev Düzenleme Modalı (Dışarı Tıklama Kapatıldı) *@
+    <!-- Düzenleme Modalı -->
     <div class="modal fade" id="editAssignmentModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -122,7 +161,8 @@
                     <form id="editAssignmentForm">
                         <input type="hidden" id="editAssignId">
                         <input type="hidden" id="editAssignCourseId">
-                        <input type="hidden" id="editAssignRowVersion"> <div class="form-group">
+                        <input type="hidden" id="editAssignRowVersion">
+                        <div class="form-group">
                             <label class="font-weight-bold">Başlık</label>
                             <input type="text" id="editAssignTitle" class="form-control" required>
                         </div>
@@ -144,6 +184,8 @@
 
 @section Scripts {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/locale/tr.min.js"></script>
 
     <script>
         const API_BASE = "https://localhost:7113/api/Assignments";
@@ -153,78 +195,22 @@
         let CURRENT_COURSE_ID = "@courseId" !== "" ? parseInt("@courseId") : null;
         let globalAllAssignments = [];
         let coursesMap = {};
+        let courseStudentCounts = {};
+        let assignmentSubmissionCounts = {};
 
         $(document).ready(function () {
-
+            moment.locale('tr');
             loadInitialData();
 
             $("#courseFilterDropdown, #sortDropdown").on("change", applyFiltersAndRender);
             $("#searchInput").on("keyup", applyFiltersAndRender);
 
-            // YENİ ÖDEV VERME
-            if ($("#assignmentForm").length) {
-                $("#assignmentForm").on("submit", function (e) {
-                    e.preventDefault();
-                    const data = {
-                        title: $("#assignTitle").val(),
-                        description: $("#assignDesc").val(),
-                        dueDate: $("#assignDueDate").val(),
-                        courseId: parseInt($("#assignCourseId").val())
-                    };
-
-                    $.ajax({
-                        url: API_BASE,
-                        method: "POST",
-                        contentType: "application/json",
-                        data: JSON.stringify(data),
-                        beforeSend: function () { $("#btnSave").prop("disabled", true).text("Yayınlanıyor..."); },
-                        success: function () {
-                            $("#assignmentModal").modal("hide");
-                            $("#assignmentForm")[0].reset();
-                            showToast("Başarılı", "Ödev başarıyla yayınlandı.", "success");
-                            loadInitialData();
-                        },
-                        error: function (err) { handleError(err); },
-                        complete: function () { $("#btnSave").prop("disabled", false).text("Ödevi Yayınla"); }
-                    });
-                });
-            }
-
-            // ÖDEV GÜNCELLEME
-            if ($("#editAssignmentForm").length) {
-                $("#editAssignmentForm").on("submit", function (e) {
-                    e.preventDefault();
-                    const id = parseInt($("#editAssignId").val());
-                    const data = {
-                        id: id,
-                        title: $("#editAssignTitle").val(),
-                        description: $("#editAssignDesc").val(),
-                        dueDate: $("#editAssignDueDate").val(),
-                        courseId: parseInt($("#editAssignCourseId").val()),
-                        rowVersion: $("#editAssignRowVersion").val() // ROWVERSION API'YE GÖNDERİLİYOR
-                    };
-
-                    $.ajax({
-                        url: `${API_BASE}/${id}`,
-                        method: "PUT",
-                        contentType: "application/json",
-                        data: JSON.stringify(data),
-                        beforeSend: function () { $("#btnUpdate").prop("disabled", true).text("Güncelleniyor..."); },
-                        success: function () {
-                            $("#editAssignmentModal").modal("hide");
-                            showToast("Başarılı", "Ödev başarıyla güncellendi.", "success");
-                            loadInitialData();
-                        },
-                        error: function (err) { handleError(err); },
-                        complete: function () { $("#btnUpdate").prop("disabled", false).text("Güncelle"); }
-                    });
-                });
-            }
+            handleFormSubmissions();
         });
 
         async function loadInitialData() {
             try {
-                $("#assignmentTableBody").html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Ödevler toplanıyor...</td></tr>');
+                $("#activeAssignmentsTableBody, #expiredAssignmentsTableBody").html('<tr><td colspan="6" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i>Veriler analiz ediliyor...</td></tr>');
 
                 const courseRes = await $.ajax({ url: COURSE_API, method: "GET" });
                 const courses = courseRes.data || courseRes;
@@ -238,47 +224,57 @@
                     $("#assignCourseId").append(`<option value="${c.id}">${c.name}</option>`);
                 });
 
-                if(CURRENT_COURSE_ID) {
-                    $("#courseFilterDropdown").val(CURRENT_COURSE_ID);
-                }
+                if(CURRENT_COURSE_ID) $("#courseFilterDropdown").val(CURRENT_COURSE_ID);
 
                 if (USER_ROLE === "Student") {
                     const res = await $.ajax({ url: `${API_BASE}/student`, method: "GET" });
                     globalAllAssignments = res.data || res;
                 } else {
                     const fetchPromises = courses.map(c =>
-                        $.ajax({ url: `${API_BASE}/course/${c.id}`, method: "GET" })
-                         .catch(err => ({ data: [] }))
+                        $.ajax({ url: `${API_BASE}/course/${c.id}`, method: "GET" }).catch(() => ({ data: [] }))
                     );
                     const results = await Promise.all(fetchPromises);
-
                     globalAllAssignments = [];
                     results.forEach(res => {
                         const list = res.data || res;
                         if(Array.isArray(list)) globalAllAssignments.push(...list);
                     });
+
+                    await fetchManagementData(courses);
                 }
 
                 applyFiltersAndRender();
 
             } catch (err) {
                 handleError(err);
-                $("#assignmentTableBody").html('<tr><td colspan="5" class="text-center text-danger">Veriler toplanırken hata oluştu!</td></tr>');
+                $("#activeAssignmentsTableBody, #expiredAssignmentsTableBody").html('<tr><td colspan="6" class="text-center text-danger">Veriler toplanırken hata oluştu!</td></tr>');
             }
+        }
+
+        async function fetchManagementData(courses) {
+            const studentCountPromises = courses.map(c =>
+                $.ajax({ url: `${COURSE_API}/${c.id}/students`, method: "GET" })
+                .then(st => { courseStudentCounts[c.id] = (st.data || st).length; })
+                .catch(() => { courseStudentCounts[c.id] = 0; })
+            );
+
+            const submissionCountPromises = globalAllAssignments.map(a =>
+                $.ajax({ url: `https://localhost:7113/api/Submissions/assignment/${a.id}`, method: "GET" })
+                .then(sub => { assignmentSubmissionCounts[a.id] = (sub.data || sub).length; })
+                .catch(() => { assignmentSubmissionCounts[a.id] = 0; })
+            );
+
+            await Promise.all([...studentCountPromises, ...submissionCountPromises]);
         }
 
         function applyFiltersAndRender() {
             let filtered = [...globalAllAssignments];
 
             const selectedCourse = $("#courseFilterDropdown").val();
-            if (selectedCourse !== "ALL") {
-                filtered = filtered.filter(a => a.courseId === parseInt(selectedCourse));
-            }
+            if (selectedCourse !== "ALL") filtered = filtered.filter(a => a.courseId === parseInt(selectedCourse));
 
             const searchText = $("#searchInput").val().toLowerCase();
-            if (searchText) {
-                filtered = filtered.filter(a => a.title.toLowerCase().includes(searchText) || a.description.toLowerCase().includes(searchText));
-            }
+            if (searchText) filtered = filtered.filter(a => a.title.toLowerCase().includes(searchText) || a.description.toLowerCase().includes(searchText));
 
             const sortBy = $("#sortDropdown").val();
             filtered.sort((a, b) => {
@@ -288,29 +284,66 @@
                 return 0;
             });
 
-            let html = "";
-            if (filtered.length === 0) {
-                html = '<tr><td colspan="5" class="text-center text-muted py-4">Aradığınız kriterlere uygun ödev bulunamadı.</td></tr>';
-            } else {
-                filtered.forEach(item => {
-                    const dueDateObj = new Date(item.dueDate);
-                    const isExpired = dueDateObj < new Date();
-                    const dateText = dueDateObj.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
-                    const dateBadge = isExpired ? `<span class="badge badge-danger p-2"><i class="fas fa-clock mr-1"></i>${dateText} (Bitti)</span>` : `<span class="badge badge-success p-2"><i class="fas fa-clock mr-1"></i>${dateText}</span>`;
+            const now = moment();
+            const activeAssignments = filtered.filter(a => moment(a.dueDate).isSameOrAfter(now));
+            const expiredAssignments = filtered.filter(a => moment(a.dueDate).isBefore(now));
 
-                    const courseName = coursesMap[item.courseId] || "Bilinmeyen Kurs";
+            renderTableData(activeAssignments, "#activeAssignmentsTableBody", true);
+            renderTableData(expiredAssignments, "#expiredAssignmentsTableBody", false);
+        }
 
-                    html += `
-                        <tr>
-                            <td><span class="badge badge-primary p-2">${courseName}</span></td>
-                            <td><strong class="text-dark">${item.title}</strong></td>
-                            <td>${item.description}</td>
-                            <td>${dateBadge}</td>
-                            <td>${renderActions(item, isExpired)}</td>
-                        </tr>`;
-                });
+        function renderTableData(assignments, targetTbody, isActive) {
+            if (assignments.length === 0) {
+                $(targetTbody).html('<tr><td colspan="6" class="text-center text-muted py-4">Kriterlere uygun ödev bulunamadı.</td></tr>');
+                return;
             }
-            $("#assignmentTableBody").html(html);
+
+            let html = "";
+            assignments.forEach(item => {
+                const dueDateObj = new Date(item.dueDate);
+                const dateText = dueDateObj.toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' });
+                const dateBadge = !isActive ? `<span class="text-danger font-weight-bold"><i class="fas fa-clock mr-1"></i>${dateText} (Bitti)</span>` : `<span class="text-success font-weight-bold"><i class="fas fa-clock mr-1"></i>${dateText}</span>`;
+                const courseName = coursesMap[item.courseId] || "Bilinmeyen Kurs";
+
+                let statusHtml = "";
+                if (USER_ROLE === "Admin" || USER_ROLE === "Teacher") {
+                    const submitted = assignmentSubmissionCounts[item.id] || 0;
+                    const total = courseStudentCounts[item.courseId] || 0;
+                    const colorClass = submitted === total && total > 0 ? "badge-success" : (submitted === 0 ? "badge-danger" : "badge-info");
+                    statusHtml = `<span class="badge ${colorClass} px-3 py-2" style="font-size: 1rem;"><i class="fas fa-user-check mr-1"></i> ${submitted} / ${total}</span>`;
+                } else {
+                    if (item.isSubmitted) {
+                        statusHtml = item.grade !== null ? `<span class="badge badge-success px-3 py-2">Yapıldı (${item.grade})</span>` : `<span class="badge badge-warning text-dark px-3 py-2">Not Bekliyor</span>`;
+                    } else {
+                        statusHtml = !isActive ? `<span class="badge badge-danger px-3 py-2">Kaçırıldı</span>` : `<span class="badge badge-secondary px-3 py-2">Yapılmadı</span>`;
+                    }
+                }
+
+                html += `
+                    <tr>
+                        <td><span class="badge badge-primary p-2">${courseName}</span></td>
+                        <td><strong class="text-dark">${item.title}</strong></td>
+                        <td class="text-muted small">${item.description}</td>
+                        <td>${dateBadge}</td>
+                        <td class="text-center">${statusHtml}</td>
+                        <td>${renderActions(item, !isActive)}</td>
+                    </tr>`;
+            });
+            $(targetTbody).html(html);
+        }
+
+
+        function renderActions(item, isExpired) {
+            let actions = "";
+            if (USER_ROLE === "Admin" || USER_ROLE === "Teacher") {
+                actions += `<a href="/Submissions?assignmentId=${item.id}" class="btn btn-sm btn-info text-white mr-1" title="Teslimleri Gör"><i class="fas fa-eye"></i></a>`;
+                actions += `<button class="btn btn-sm btn-warning text-dark mr-1" onclick="openEditModal(${item.id})"><i class="fas fa-edit"></i></button>`;
+                actions += `<button class="btn btn-sm btn-danger" onclick="deleteAssignment(${item.id})"><i class="fas fa-trash"></i></button>`;
+            } else {
+                if (isExpired) actions += `<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-lock"></i></button>`;
+                else actions += `<a href="/Submissions?assignmentId=${item.id}" class="btn btn-sm btn-success"><i class="fas fa-upload mr-1"></i>Yükle</a>`;
+            }
+            return actions;
         }
 
         function openEditModal(id) {
@@ -320,100 +353,63 @@
                 $("#editAssignTitle").val(assignment.title);
                 $("#editAssignDesc").val(assignment.description);
                 $("#editAssignCourseId").val(assignment.courseId);
-
-                // ROWVERSION HAFIZAYA ALINIYOR
                 $("#editAssignRowVersion").val(assignment.rowVersion);
-
                 const date = new Date(assignment.dueDate);
                 const tzoffset = date.getTimezoneOffset() * 60000;
                 const localISOTime = (new Date(date - tzoffset)).toISOString().slice(0, 16);
-
                 $("#editAssignDueDate").val(localISOTime);
                 $("#editAssignmentModal").modal("show");
             }
         }
 
-        function renderActions(item, isExpired) {
-            let actions = "";
-
-            if (USER_ROLE === "Admin" || USER_ROLE === "Teacher") {
-                actions += `<a href="/Submissions?assignmentId=${item.id}" class="btn btn-sm btn-info text-white mr-1"><i class="fas fa-eye"></i> Teslimler</a>`;
-                actions += `<button class="btn btn-sm btn-warning text-dark mr-1" onclick="openEditModal(${item.id})"><i class="fas fa-edit"></i></button>`;
-                actions += `<button class="btn btn-sm btn-danger" onclick="deleteAssignment(${item.id})"><i class="fas fa-trash"></i></button>`;
-            }
-        else if (USER_ROLE === "Student") {
-                        if(isExpired) {
-                            actions += `<button class="btn btn-sm btn-secondary" disabled><i class="fas fa-lock mr-1"></i>Süre Bitti</button>`;
-                        } else {
-                            actions += `<a href="/Submissions?assignmentId=${item.id}" class="btn btn-sm btn-success"><i class="fas fa-upload mr-1"></i>Yükle</a>`;
-                        }
-                    }
-
-            return actions;
+        function handleFormSubmissions() {
+            $("#assignmentForm").on("submit", function (e) {
+                e.preventDefault();
+                const data = { title: $("#assignTitle").val(), description: $("#assignDesc").val(), dueDate: $("#assignDueDate").val(), courseId: parseInt($("#assignCourseId").val()) };
+                $.ajax({
+                    url: API_BASE, method: "POST", contentType: "application/json", data: JSON.stringify(data),
+                    beforeSend: function () { $("#btnSave").prop("disabled", true).text("Yayınlanıyor..."); },
+                    success: function () { $("#assignmentModal").modal("hide"); $("#assignmentForm")[0].reset(); showToast("Başarılı", "Ödev yayınlandı.", "success"); loadInitialData(); },
+                    error: function (err) { handleError(err); },
+                    complete: function () { $("#btnSave").prop("disabled", false).text("Ödevi Yayınla"); }
+                });
+            });
+            $("#editAssignmentForm").on("submit", function (e) {
+                e.preventDefault();
+                const id = parseInt($("#editAssignId").val());
+                const data = { id: id, title: $("#editAssignTitle").val(), description: $("#editAssignDesc").val(), dueDate: $("#editAssignDueDate").val(), courseId: parseInt($("#editAssignCourseId").val()), rowVersion: $("#editAssignRowVersion").val() };
+                $.ajax({
+                    url: `${API_BASE}/${id}`, method: "PUT", contentType: "application/json", data: JSON.stringify(data),
+                    beforeSend: function () { $("#btnUpdate").prop("disabled", true).text("Güncelleniyor..."); },
+                    success: function () { $("#editAssignmentModal").modal("hide"); showToast("Başarılı", "Ödev güncellendi.", "success"); loadInitialData(); },
+                    error: function (err) { handleError(err); },
+                    complete: function () { $("#btnUpdate").prop("disabled", false).text("Güncelle"); }
+                });
+            });
         }
 
         function deleteAssignment(id) {
             Swal.fire({
-                title: 'Emin misiniz?',
-                text: "Bu ödevi ve öğrencilerin yüklediği tüm dosyaları sileceksiniz!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#e74a3b',
-                cancelButtonColor: '#858796',
-                confirmButtonText: 'Evet, Sil!',
-                cancelButtonText: 'İptal'
+                title: 'Emin misiniz?', text: "Tüm teslimatlar silinecektir!", icon: 'warning',
+                showCancelButton: true, confirmButtonColor: '#e74a3b', confirmButtonText: 'Evet, Sil!'
             }).then((result) => {
                 if (result.isConfirmed) {
-                    $.ajax({
-                        url: `${API_BASE}/${id}`,
-                        method: "DELETE",
-                        success: function() {
-                            showToast("Silindi", "Ödev başarıyla silindi.", "danger");
-                            loadInitialData();
-                        },
-                        error: function(err) { handleError(err); }
-                    });
+                    $.ajax({ url: `${API_BASE}/${id}`, method: "DELETE", success: function() { showToast("Silindi", "Ödev silindi.", "danger"); loadInitialData(); }, error: function(err) { handleError(err); } });
                 }
             });
         }
 
         function handleError(err) {
-            let errorMsg = "İşlem sırasında beklenmeyen bir hata oluştu.";
-            if (err.responseJSON) {
-                if (err.responseJSON.errors) errorMsg = Object.values(err.responseJSON.errors).flat().join("<br>");
-                else if (err.responseJSON.detail) errorMsg = err.responseJSON.detail;
-                else if (err.responseJSON.message) errorMsg = err.responseJSON.message;
-            } else if (err.status === 403) {
-                errorMsg = "Bu işlemi gerçekleştirmek için yetkiniz yok.";
-            }
-            showToast("İşlem Başarısız", errorMsg, "danger");
+            let errorMsg = "Hata oluştu.";
+            if (err.responseJSON) errorMsg = err.responseJSON.message || err.responseJSON.detail || "İşlem başarısız.";
+            showToast("Hata", errorMsg, "danger");
         }
 
         function showToast(title, message, type) {
-            let swalIcon = type === 'danger' ? 'error' : type;
-            let bgColor = type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : '#f6c23e');
-            let txtColor = type === 'warning' ? '#3a3b45' : '#ffffff';
-
-            const Toast = Swal.mixin({
-                toast: true,
-                position: 'bottom-end',
-                showConfirmButton: false,
-                timer: 4000,
-                timerProgressBar: true,
-                background: bgColor,
-                color: txtColor,
-                iconColor: txtColor,
-                didOpen: (toast) => {
-                    toast.addEventListener('mouseenter', Swal.stopTimer)
-                    toast.addEventListener('mouseleave', Swal.resumeTimer)
-                }
-            });
-
-            Toast.fire({
-                icon: swalIcon,
-                title: title,
-                text: message
-            });
+            Swal.mixin({
+                toast: true, position: 'bottom-end', showConfirmButton: false, timer: 3000,
+                timerProgressBar: true, background: type === 'danger' ? '#e74a3b' : (type === 'success' ? '#1cc88a' : '#f6c23e'), color: '#fff'
+            }).fire({ icon: type === 'danger' ? 'error' : type, title: title, text: message });
         }
     </script>
 }

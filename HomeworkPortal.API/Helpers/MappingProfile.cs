@@ -8,6 +8,8 @@ namespace HomeworkPortal.API.Helpers
     {
         public MappingProfile()
         {
+            CreateMap<AppUser, UserReadDto>();
+
             // Kullanıcı Kayıt Mapping
             CreateMap<RegisterDto, AppUser>()
                 .ForMember(dest => dest.UserName, opt => opt.MapFrom(src => src.Email));
