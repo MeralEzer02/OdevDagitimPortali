@@ -56,7 +56,7 @@
             </div>
             <div class="col-md-6">
                 <label class="small font-weight-bold text-primary"><i class="fas fa-search mr-1"></i>Arama</label>
-                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Kurs adında veya açıklamasında ara...">
+                <input type="text" id="searchInput" class="form-control form-control-sm" placeholder="Mevcut sayfada kurs adında veya açıklamasında ara...">
             </div>
         </div>
     </div>
@@ -65,7 +65,7 @@
 <div class="card shadow mb-4">
     <div class="card-body">
         <div class="table-responsive">
-            <table class="table table-bordered table-hover" width="100%" cellspacing="0">
+            <table class="table table-bordered table-hover mb-0" width="100%" cellspacing="0">
                 <thead class="thead-dark">
                     <tr>
                         <th>Kurs Adı</th>
@@ -79,6 +79,15 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Sayfalama (Pagination) Alt Yapısı -->
+        <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+            <div id="pageInfo" class="small font-weight-bold text-muted"></div>
+            <nav aria-label="Page navigation">
+                <ul class="pagination pagination-sm mb-0" id="paginationContainer"></ul>
+            </nav>
+        </div>
+
     </div>
 </div>
 
@@ -133,8 +142,11 @@
         let globalMyCourses = [];
         let CURRENT_TAB = USER_ROLE === "Student" ? "MY_COURSES" : "ALL_COURSES";
 
+        let currentPage = 1;
+        const pageSize = 10;
+
         $(document).ready(function () {
-            loadCourses();
+            loadCourses(currentPage);
 
             $("#searchInput").on("keyup", applyFiltersAndRender);
             $("#sortDropdown").on("change", applyFiltersAndRender);
@@ -150,8 +162,14 @@
                     url: API_BASE, method: "POST", contentType: "application/json",
                     data: JSON.stringify({ name: $("#courseName").val(), description: $("#courseDesc").val() }),
                     beforeSend: function () { $("#btnSave").prop("disabled", true).text("İşleniyor..."); },
-                    success: function () { $("#courseModal").modal("hide"); $("#courseForm")[0].reset(); showToast("Başarılı", "Kurs oluşturuldu.", "success"); loadCourses(); },
-                    error: function (err) { handleError(err); }, complete: function () { $("#btnSave").prop("disabled", false).text("Kaydet"); }
+                    success: function () {
+                        $("#courseModal").modal("hide");
+                        $("#courseForm")[0].reset();
+                        showToast("Başarılı", "Kurs oluşturuldu.", "success");
+                        loadCourses(1);
+                    },
+                    error: function (err) { handleError(err); },
+                    complete: function () { $("#btnSave").prop("disabled", false).text("Kaydet"); }
                 });
             });
 
@@ -162,8 +180,13 @@
                     url: `${API_BASE}/${id}`, method: "PUT", contentType: "application/json",
                     data: JSON.stringify({ id: parseInt(id), name: $("#editCourseName").val(), description: $("#editCourseDesc").val(), rowVersion: $("#editCourseRowVersion").val() }),
                     beforeSend: function () { $("#btnUpdate").prop("disabled", true).text("Güncelleniyor..."); },
-                    success: function () { $("#editCourseModal").modal("hide"); showToast("Başarılı", "Kurs güncellendi.", "success"); loadCourses(); },
-                    error: function (err) { handleError(err); }, complete: function () { $("#btnUpdate").prop("disabled", false).text("Güncelle"); }
+                    success: function () {
+                        $("#editCourseModal").modal("hide");
+                        showToast("Başarılı", "Kurs güncellendi.", "success");
+                        loadCourses(currentPage);
+                    },
+                    error: function (err) { handleError(err); },
+                    complete: function () { $("#btnUpdate").prop("disabled", false).text("Güncelle"); }
                 });
             });
         });
@@ -174,12 +197,15 @@
             applyFiltersAndRender();
         }
 
-        async function loadCourses() {
+        async function loadCourses(page = 1) {
+            currentPage = page;
             try {
                 $("#courseTableBody").html('<tr><td colspan="5" class="text-center py-4"><i class="fas fa-spinner fa-spin text-primary mr-2"></i> Kurslar Yükleniyor...</td></tr>');
+                $("#courseTableBody").css("opacity", "0.5");
 
-                const res = await $.ajax({ url: API_BASE, method: "GET" });
-                const allData = res.data || res || [];
+                const res = await $.ajax({ url: `${API_BASE}?pageNumber=${page}&pageSize=${pageSize}`, method: "GET" });
+
+                const allData = res.data || [];
 
                 globalAllCourses = allData;
 
@@ -188,7 +214,12 @@
                 }
 
                 applyFiltersAndRender();
-             } catch (err) { handleError(err); }
+                renderPagination(res.totalCount || 0, res.pageNumber || 1, res.totalPages || 1);
+             } catch (err) {
+                 handleError(err);
+             } finally {
+                 $("#courseTableBody").css("opacity", "1");
+             }
         }
 
         function applyFiltersAndRender() {
@@ -225,6 +256,35 @@
                 });
             }
             $("#courseTableBody").html(html);
+        }
+
+        function renderPagination(totalCount, current, totalPages) {
+            if (totalPages <= 1) {
+                $("#paginationContainer").html("");
+                $("#pageInfo").text("");
+                return;
+            }
+
+            let html = "";
+            html += `<li class="page-item ${current === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="loadCourses(${current - 1})">Önceki</a>
+                     </li>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === current ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="loadCourses(${i})">${i}</a>
+                         </li>`;
+            }
+
+            html += `<li class="page-item ${current === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="loadCourses(${current + 1})">Sonraki</a>
+                     </li>`;
+
+            $("#paginationContainer").html(html);
+
+            const startItem = (current - 1) * pageSize + 1;
+            const endItem = Math.min(current * pageSize, totalCount);
+            $("#pageInfo").text(`Toplam ${totalCount} kurstan ${startItem}-${endItem} arası gösteriliyor.`);
         }
 
         function renderActions(item, enrolledIds) {
@@ -273,7 +333,7 @@
                         method: "DELETE",
                         success: function() {
                             showToast("Silindi", "Kurs başarıyla silindi.", "danger");
-                            loadCourses();
+                            loadCourses(currentPage); 
                         },
                         error: function(err) { handleError(err); }
                     });
@@ -284,7 +344,10 @@
         function enroll(id) {
             $.ajax({
                 url: `${API_BASE}/${id}/enroll`, method: "POST",
-                success: function() { showToast("Başarılı", "Kursa başarıyla kayıt oldunuz!", "success"); loadCourses(); },
+                success: function() {
+                    showToast("Başarılı", "Kursa başarıyla kayıt oldunuz!", "success");
+                    loadCourses(currentPage);
+                },
                 error: function(err) { handleError(err); }
             });
         }

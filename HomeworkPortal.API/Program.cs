@@ -1,4 +1,5 @@
 ﻿using HomeworkPortal.API.Data;
+using HomeworkPortal.API.Middlewares;
 using HomeworkPortal.API.Models;
 using HomeworkPortal.API.Repositories;
 using HomeworkPortal.API.Services;
@@ -174,6 +175,8 @@ app.UseMiddleware<HomeworkPortal.API.Middlewares.CorrelationIdMiddleware>();
 
 // Hata Yakalayıcı Middleware
 app.UseMiddleware<HomeworkPortal.API.Middlewares.GlobalExceptionMiddleware>();
+
+app.UseMiddleware<ExceptionMiddleware>();
 
 // Health Check Endpoint'leri
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

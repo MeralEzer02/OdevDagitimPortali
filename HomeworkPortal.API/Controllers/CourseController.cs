@@ -130,5 +130,30 @@ namespace HomeworkPortal.API.Controllers
             }
             return Ok(new { message = "Öğrenci kurstan başarıyla çıkarıldı." });
         }
+
+        [HttpGet("all-enrolled-students")]
+        [Authorize(Roles = "Teacher,Admin")]
+        public async Task<IActionResult> GetAllEnrolledStudents()
+        {
+            try
+            {
+                var courses = await _context.Courses
+                    .Include(c => c.Students)
+                    .Select(c => new
+                    {
+                        CourseId = c.Id,
+                        CourseName = c.Name,
+                        TeacherId = c.TeacherId,
+                        Students = c.Students.Select(s => new { s.Id, s.FullName, s.Email }).ToList()
+                    })
+                    .ToListAsync();
+
+                return Ok(courses);
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(new { message = ex.Message });
+            }
+        }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
+using HomeworkPortal.API.Exceptions;
 
 namespace HomeworkPortal.API.Services
 {
@@ -17,17 +18,16 @@ namespace HomeworkPortal.API.Services
         public async Task<string> UploadFileAsync(IFormFile file, string folderName)
         {
             if (file == null || file.Length == 0)
-                throw new Exception("Yüklenecek dosya bulunamadı veya dosya boş.");
+                throw new BadRequestException("Yüklenecek dosya bulunamadı veya dosya boş.");
 
             if (file.Length > _maxFileSize)
-                throw new Exception($"Dosya boyutu çok büyük. Maksimum sınır: 5MB.");
+                throw new BadRequestException($"Dosya boyutu çok büyük. Maksimum sınır: 5MB.");
 
             var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
             if (string.IsNullOrEmpty(extension) || !_allowedExtensions.Contains(extension))
-                throw new Exception($"Geçersiz dosya tipi. İzin verilen uzantılar: {string.Join(", ", _allowedExtensions)}");
+                throw new BadRequestException($"Geçersiz dosya tipi. İzin verilen uzantılar: {string.Join(", ", _allowedExtensions)}");
 
             var fileName = Guid.NewGuid().ToString() + extension;
-
             var uploadsFolder = Path.Combine(_env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot"), "uploads", folderName);
 
             if (!Directory.Exists(uploadsFolder))

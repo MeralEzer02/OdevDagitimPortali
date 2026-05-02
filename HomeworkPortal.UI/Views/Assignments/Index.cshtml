@@ -65,9 +65,10 @@
 <div class="card shadow mb-4 border-top-0">
     <div class="card-body">
         <div class="tab-content">
+            <!-- AKTİF ÖDEVLER TABLOSU -->
             <div class="tab-pane fade show active" id="activeTab" role="tabpanel">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
+                    <table class="table table-bordered table-hover align-middle mb-0" width="100%" cellspacing="0">
                         <thead class="thead-dark">
                             <tr>
                                 <th>İlgili Kurs</th>
@@ -83,11 +84,19 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Aktif Ödevler Sayfalama -->
+                <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+                    <div id="activePageInfo" class="small font-weight-bold text-muted"></div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0" id="activePagination"></ul>
+                    </nav>
+                </div>
             </div>
 
+            <!-- SÜRESİ GEÇENLER TABLOSU -->
             <div class="tab-pane fade" id="expiredTab" role="tabpanel">
                 <div class="table-responsive">
-                    <table class="table table-bordered table-hover align-middle" width="100%" cellspacing="0">
+                    <table class="table table-bordered table-hover align-middle mb-0" width="100%" cellspacing="0">
                         <thead class="thead-dark">
                             <tr>
                                 <th>İlgili Kurs</th>
@@ -103,6 +112,13 @@
                         </tbody>
                     </table>
                 </div>
+                <!-- Süresi Geçenler Sayfalama -->
+                <div class="d-flex justify-content-between align-items-center mt-3 px-2">
+                    <div id="expiredPageInfo" class="small font-weight-bold text-muted"></div>
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination pagination-sm mb-0" id="expiredPagination"></ul>
+                    </nav>
+                </div>
             </div>
         </div>
     </div>
@@ -110,7 +126,6 @@
 
 @if (role == "Teacher" || role == "Admin")
 {
-    <!-- Yeni Ödev Modalı -->
     <div class="modal fade" id="assignmentModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -147,7 +162,6 @@
         </div>
     </div>
 
-    <!-- Düzenleme Modalı -->
     <div class="modal fade" id="editAssignmentModal" data-backdrop="static" data-keyboard="false" tabindex="-1" role="dialog" aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
@@ -198,6 +212,12 @@
         let courseStudentCounts = {};
         let assignmentSubmissionCounts = {};
 
+        const PAGE_SIZE = 5;
+        let currentActiveAssignments = [];
+        let currentExpiredAssignments = [];
+        let activePage = 1;
+        let expiredPage = 1;
+
         $(document).ready(function () {
             moment.locale('tr');
             loadInitialData();
@@ -227,11 +247,11 @@
                 if(CURRENT_COURSE_ID) $("#courseFilterDropdown").val(CURRENT_COURSE_ID);
 
                 if (USER_ROLE === "Student") {
-                    const res = await $.ajax({ url: `${API_BASE}/student`, method: "GET" });
+                    const res = await $.ajax({ url: `${API_BASE}/student?pageNumber=1&pageSize=1000`, method: "GET" });
                     globalAllAssignments = res.data || res;
                 } else {
                     const fetchPromises = courses.map(c =>
-                        $.ajax({ url: `${API_BASE}/course/${c.id}`, method: "GET" }).catch(() => ({ data: [] }))
+                        $.ajax({ url: `${API_BASE}/course/${c.id}?pageNumber=1&pageSize=1000`, method: "GET" }).catch(() => ({ data: [] }))
                     );
                     const results = await Promise.all(fetchPromises);
                     globalAllAssignments = [];
@@ -285,12 +305,81 @@
             });
 
             const now = moment();
-            const activeAssignments = filtered.filter(a => moment(a.dueDate).isSameOrAfter(now));
-            const expiredAssignments = filtered.filter(a => moment(a.dueDate).isBefore(now));
 
-            renderTableData(activeAssignments, "#activeAssignmentsTableBody", true);
-            renderTableData(expiredAssignments, "#expiredAssignmentsTableBody", false);
+            currentActiveAssignments = filtered.filter(a => moment(a.dueDate).isSameOrAfter(now));
+            currentExpiredAssignments = filtered.filter(a => moment(a.dueDate).isBefore(now));
+            activePage = 1;
+            expiredPage = 1;
+
+            renderActivePage();
+            renderExpiredPage();
         }
+
+        // --- SAYFALAMA (PAGINATION) MOTORU ---
+
+        function renderActivePage() {
+            const total = currentActiveAssignments.length;
+            const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+            const start = (activePage - 1) * PAGE_SIZE;
+            const paginatedData = currentActiveAssignments.slice(start, start + PAGE_SIZE);
+
+            renderTableData(paginatedData, "#activeAssignmentsTableBody", true);
+            renderPaginationControls(total, activePage, totalPages, "active");
+        }
+
+        function renderExpiredPage() {
+            const total = currentExpiredAssignments.length;
+            const totalPages = Math.ceil(total / PAGE_SIZE) || 1;
+            const start = (expiredPage - 1) * PAGE_SIZE;
+            const paginatedData = currentExpiredAssignments.slice(start, start + PAGE_SIZE);
+
+            renderTableData(paginatedData, "#expiredAssignmentsTableBody", false);
+            renderPaginationControls(total, expiredPage, totalPages, "expired");
+        }
+
+        function changePage(tab, page) {
+            if (tab === 'active') {
+                activePage = page;
+                renderActivePage();
+            } else {
+                expiredPage = page;
+                renderExpiredPage();
+            }
+        }
+
+        function renderPaginationControls(totalCount, currentPage, totalPages, tab) {
+            const container = tab === "active" ? "#activePagination" : "#expiredPagination";
+            const infoContainer = tab === "active" ? "#activePageInfo" : "#expiredPageInfo";
+
+            if (totalCount === 0) {
+                $(container).html("");
+                $(infoContainer).text("");
+                return;
+            }
+
+            let html = "";
+            html += `<li class="page-item ${currentPage === 1 ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="changePage('${tab}', ${currentPage - 1})">Önceki</a>
+                     </li>`;
+
+            for (let i = 1; i <= totalPages; i++) {
+                html += `<li class="page-item ${i === currentPage ? 'active' : ''}">
+                            <a class="page-link" href="javascript:void(0)" onclick="changePage('${tab}', ${i})">${i}</a>
+                         </li>`;
+            }
+
+            html += `<li class="page-item ${currentPage === totalPages ? 'disabled' : ''}">
+                        <a class="page-link" href="javascript:void(0)" onclick="changePage('${tab}', ${currentPage + 1})">Sonraki</a>
+                     </li>`;
+
+            $(container).html(html);
+
+            const startItem = (currentPage - 1) * PAGE_SIZE + 1;
+            const endItem = Math.min(currentPage * PAGE_SIZE, totalCount);
+            $(infoContainer).text(`Toplam ${totalCount} ödevden ${startItem}-${endItem} arası gösteriliyor.`);
+        }
+
+        // --- RENDER ---
 
         function renderTableData(assignments, targetTbody, isActive) {
             if (assignments.length === 0) {
@@ -329,9 +418,9 @@
                         <td>${renderActions(item, !isActive)}</td>
                     </tr>`;
             });
-            $(targetTbody).html(html);
-        }
 
+            $(targetTbody).hide().html(html).fadeIn(200);
+        }
 
         function renderActions(item, isExpired) {
             let actions = "";
@@ -374,6 +463,7 @@
                     complete: function () { $("#btnSave").prop("disabled", false).text("Ödevi Yayınla"); }
                 });
             });
+
             $("#editAssignmentForm").on("submit", function (e) {
                 e.preventDefault();
                 const id = parseInt($("#editAssignId").val());

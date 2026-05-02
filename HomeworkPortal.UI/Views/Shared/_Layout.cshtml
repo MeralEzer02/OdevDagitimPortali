@@ -73,9 +73,22 @@
             <li class="nav-item @(currentPath == "/" || currentPath.Contains("/home") ? "active" : "")">
                 <a class="nav-link" href="/Home/Index">
                     <i class="fas fa-fw fa-tachometer-alt"></i>
-                    <span>Dashboard</span>
+                    <span>Ana Ekran</span>
                 </a>
             </li>
+
+            @if (userRole == "Admin" || userRole == "Teacher")
+            {
+                <hr class="sidebar-divider">
+                <div class="sidebar-heading">Sistem Yönetimi</div>
+
+                <li class="nav-item @(currentPath.Contains("/users") ? "active" : "")">
+                    <a class="nav-link" href="/Users">
+                        <i class="fas fa-fw fa-users-cog"></i>
+                        <span>Kullanıcılar</span>
+                    </a>
+                </li>
+            }
 
             <hr class="sidebar-divider">
             <div class="sidebar-heading">Eğitim Yönetimi</div>
@@ -103,19 +116,6 @@
                     <a class="nav-link" href="/Submissions">
                         <i class="fas fa-fw fa-check-square"></i>
                         <span>Teslimler</span>
-                    </a>
-                </li>
-            }
-
-            @if (userRole == "Admin" || userRole == "Teacher")
-            {
-                <hr class="sidebar-divider">
-                <div class="sidebar-heading">Sistem Yönetimi</div>
-
-                <li class="nav-item @(currentPath.Contains("/users") ? "active" : "")">
-                    <a class="nav-link" href="/Users">
-                        <i class="fas fa-fw fa-users-cog"></i>
-                        <span>Kullanıcılar</span>
                     </a>
                 </li>
             }
@@ -179,6 +179,7 @@
         <i class="fas fa-angle-up"></i>
     </a>
 
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script src="~/Admin/vendor/jquery/jquery.min.js"></script>
     <script src="~/Admin/vendor/bootstrap/js/bootstrap.bundle.min.js"></script>
     <script src="~/Admin/vendor/jquery-easing/jquery.easing.min.js"></script>
@@ -195,17 +196,36 @@
 
         $(document).ajaxError(function (event, xhr, settings) {
             if (settings.url.includes("7113")) {
+                let errorMsg = "Sunucu ile iletişim kurulamadı.";
+
                 if (xhr.status === 401) {
-                    alert("Oturum süreniz doldu veya geçersiz. Lütfen tekrar giriş yapın.");
-                    window.location.href = "/Auth/Login";
+                    Swal.fire('Oturum Kapandı', 'Oturum süreniz doldu veya geçersiz. Lütfen tekrar giriş yapın.', 'warning')
+                        .then(() => window.location.href = "/Auth/Login");
+                    return;
                 } else if (xhr.status === 403) {
-                    alert("Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.");
+                    errorMsg = "Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.";
+                } else if (xhr.status === 400) {
+                    errorMsg = xhr.responseJSON?.message || xhr.responseJSON?.detail || "Geçersiz istek.";
+                } else if (xhr.status === 500) {
+                    errorMsg = "Sunucuda beklenmeyen bir hata oluştu. Dosya boyutu çok büyük olabilir veya sistemde anlık bir arıza var.";
                 }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'bottom-end',
+                    showConfirmButton: false,
+                    timer: 5000,
+                    timerProgressBar: true,
+                    background: '#e74a3b',
+                    color: '#fff',
+                    icon: 'error',
+                    title: 'Hata (' + xhr.status + ')',
+                    text: errorMsg
+                });
             }
         });
     </script>
 
     @await RenderSectionAsync("Scripts", required: false)
-
 </body>
 </html>

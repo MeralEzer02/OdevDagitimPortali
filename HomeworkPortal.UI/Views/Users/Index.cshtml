@@ -163,17 +163,12 @@
                 allCourses = courses.data || courses || [];
 
                 studentCoursesMap = {};
-                const promises = allCourses.map(c =>
-                    $.ajax({ url: `${API_BASE}/Courses/${c.id}/students`, method: "GET" })
-                     .then(st => ({ id: c.id, name: c.name, students: st || [] }))
-                     .catch(() => ({ id: c.id, name: c.name, students: [] }))
-                );
+                const courseStudents = await $.ajax({ url: `${API_BASE}/Courses/all-enrolled-students`, method: "GET" });
 
-                const coursesWithStudents = await Promise.all(promises);
-                coursesWithStudents.forEach(cs => {
+                courseStudents.forEach(cs => {
                     cs.students.forEach(s => {
                         if (!studentCoursesMap[s.id]) studentCoursesMap[s.id] = [];
-                        studentCoursesMap[s.id].push(cs.name);
+                        studentCoursesMap[s.id].push(cs.courseName);
                     });
                 });
 
@@ -292,28 +287,21 @@
                 teacherStudentsMap.clear();
                 let select = $("#courseSelect").empty().append('<option value="ALL">Tüm Kurslarım</option>');
 
-                const promises = courses.map(c =>
-                    $.ajax({ url: `${API_BASE}/Courses/${c.id}/students`, method: "GET" })
-                     .then(st => ({ id: c.id, name: c.name, teacherId: c.teacherId, students: st || [] }))
-                     .catch(() => ({ id: c.id, name: c.name, teacherId: c.teacherId, students: [] }))
-                );
-
-                const coursesWithStudents = await Promise.all(promises);
+                const coursesWithStudents = await $.ajax({ url: `${API_BASE}/Courses/all-enrolled-students`, method: "GET" });
                 const myUserId = getUserIdFromToken();
 
                 coursesWithStudents.forEach(cs => {
-                    const originalCourse = courses.find(c => c.id === cs.id);
-                    const isMyCourse = myUserId ? (originalCourse.teacherId === myUserId) : true;
+                    const isMyCourse = myUserId ? (cs.teacherId === myUserId) : true;
 
                     if (isMyCourse && cs.students.length > 0) {
-                        select.append(`<option value="${cs.id}">${cs.name}</option>`);
+                        select.append(`<option value="${cs.courseId}">${cs.courseName}</option>`);
                         cs.students.forEach(s => {
                             if (!teacherStudentsMap.has(s.id)) {
-                                teacherStudentsMap.set(s.id, { ...s, courses: [cs.name], courseIds: [cs.id] });
+                                teacherStudentsMap.set(s.id, { id: s.id, fullName: s.fullName, email: s.email, courses: [cs.courseName], courseIds: [cs.courseId] });
                             } else {
                                 const existing = teacherStudentsMap.get(s.id);
-                                existing.courses.push(cs.name);
-                                existing.courseIds.push(cs.id);
+                                existing.courses.push(cs.courseName);
+                                existing.courseIds.push(cs.courseId);
                             }
                         });
                     }
