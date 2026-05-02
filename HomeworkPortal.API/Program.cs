@@ -7,7 +7,6 @@ using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
 using Prometheus;
 using Serilog;
@@ -175,8 +174,6 @@ app.UseMiddleware<HomeworkPortal.API.Middlewares.CorrelationIdMiddleware>();
 
 // Hata Yakalayıcı Middleware
 app.UseMiddleware<HomeworkPortal.API.Middlewares.GlobalExceptionMiddleware>();
-
-app.UseMiddleware<ExceptionMiddleware>();
 
 // Health Check Endpoint'leri
 app.MapHealthChecks("/health", new Microsoft.AspNetCore.Diagnostics.HealthChecks.HealthCheckOptions

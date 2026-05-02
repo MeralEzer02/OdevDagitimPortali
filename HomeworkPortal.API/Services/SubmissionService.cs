@@ -14,7 +14,7 @@ namespace HomeworkPortal.API.Services
         private readonly IUnitOfWork _unitOfWork;
         private readonly IMapper _mapper;
         private readonly ICurrentUserService _currentUserService;
-        private readonly UserManager<AppUser> _userManager; // YENİ EKLENDİ
+        private readonly UserManager<AppUser> _userManager;
         private readonly INotificationService _notificationService;
         private readonly IFileService _fileService;
         private readonly ILogger<SubmissionService> _logger;
@@ -24,7 +24,7 @@ namespace HomeworkPortal.API.Services
             _unitOfWork = unitOfWork;
             _mapper = mapper;
             _currentUserService = currentUserService;
-            _userManager = userManager; // YENİ EKLENDİ
+            _userManager = userManager;
             _notificationService = notificationService;
             _fileService = fileService;
             _logger = logger;
@@ -52,10 +52,12 @@ namespace HomeworkPortal.API.Services
             submission.StudentId = studentId;
             submission.SubmissionDate = DateTime.UtcNow;
 
-            if (dto.File != null)
+            if (dto.File == null || dto.File.Length == 0)
             {
-                submission.FilePath = await _fileService.UploadFileAsync(dto.File, "submissions");
+                throw new Exception("Ödev teslimi için geçerli bir dosya seçmelisiniz.");
             }
+
+            submission.FilePath = await _fileService.UploadFileAsync(dto.File, "submissions");
 
             try
             {
@@ -85,7 +87,6 @@ namespace HomeworkPortal.API.Services
 
             if (submission == null) throw new Exception("Teslimat bulunamadı.");
 
-            // 👑 ADMIN KONTROLÜ
             var user = await _userManager.FindByIdAsync(_currentUserService.UserId);
             var isAdmin = user != null && await _userManager.IsInRoleAsync(user, "Admin");
 
